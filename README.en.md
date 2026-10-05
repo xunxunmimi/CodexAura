@@ -6,13 +6,13 @@
 
 ## Download and install
 
-**Pending publication: no public download link yet.** The local candidate is `Codex Aura 0.4.0 arm64.dmg.zip`: a ZIP containing one DMG installer, for Apple silicon. It uses ad-hoc signing and is not notarized. Minimum declared macOS is 14; isolated startup has only been checked on macOS 26. Intel and Universal packages have not been accepted.
+**[Experimental prerelease download](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/Codex.Aura.0.4.0.arm64.dmg.zip).** The package is `Codex Aura 0.4.0 arm64.dmg.zip`: a ZIP containing one DMG installer, for Apple silicon. It uses ad-hoc signing and is not notarized. Minimum declared macOS is 14; isolated startup has only been checked on macOS 26. Intel and Universal packages have not been accepted.
 
-Once a validated Release is published, download its `.dmg.zip` and SHA-256 file, verify the hash, unzip it, open the DMG, and drag the app to Applications. Install/sign in to compatible Codex separately. The app lives in the menu bar; log estimates, X radar and translation are off by default. Source archives from Code → Download ZIP need compilation. See the [detailed Chinese build/run tutorial](README.md#从源码构建).
+Download the [experimental Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.0-experimental) `.dmg.zip` and [SHA-256 file](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/SHA256SUMS-0.4.0.txt), verify the hash, unzip it, open the DMG, and drag the app to Applications. Install/sign in to compatible Codex separately. The app lives in the menu bar; log estimates, X radar and translation are off by default. Source archives from Code → Download ZIP need compilation. See the [detailed Chinese build/run tutorial](README.md#从源码构建).
 
 Licensed under **PolyForm Noncommercial 1.0.0**: source-available for the purposes permitted by the license; commercial uses need separate permission. This is not an OSI open-source license. Read [LICENSE](LICENSE), [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
-> **Local publication candidate 0.4.0.** The public repository has been created; the first source commit and downloadable Release have not been published yet. Source verification and downloadable-app acceptance are separate. New arm64 App/DMG/DMG-ZIP passed read-only mounting, content checks, signature integrity and isolated startup with a fake subprocess. Old 0.3.x packages are not this candidate. Fresh-Mac download/install, real-account and Intel execution remain untested.
+> **Experimental prerelease 0.4.0.** Source and the experimental Release are published; publicly downloaded bytes match the local SHA-256 hashes. Source verification and downloadable-app acceptance are separate. New arm64 App/DMG/DMG-ZIP passed read-only mounting, content checks, signature integrity and isolated startup with a fake subprocess. Old 0.3.x packages are not this candidate. Fresh-Mac download/install, real-account and Intel execution remain untested.
 
 This independent project is not affiliated with, sponsored by, or endorsed by OpenAI, ChatGPT, Codex, X or Google. Names and trademarks belong to their respective owners.
 
@@ -33,9 +33,9 @@ The simple build targets the host architecture; the distribution script targets 
 
 ## Install and use
 
-**There is no public download link yet.** A validated Release should identify the source revision, architectures, signing status, SHA-256 checksums and limits. A source ZIP is not a runnable app.
+**[Experimental Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.0-experimental).** Its notes identify the source revision, architecture, signing status, SHA-256 checksums and limits. A source ZIP is not a runnable app.
 
-Once a validated package has been published:
+To try this experimental package:
 
 1. Install and sign in to compatible Codex. Codex Aura neither bundles Codex nor requests your credentials.
 2. Download its DMG/ZIP and check the supplied SHA-256.

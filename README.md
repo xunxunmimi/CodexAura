@@ -8,9 +8,9 @@
 
 | 安装包 | 架构 / 系统 | 下载状态 |
 | --- | --- | --- |
-| `Codex Aura 0.4.0 arm64.dmg.zip` | Apple 芯片 arm64；声明最低 macOS 14，当前仅在 macOS 26 做过隔离启动验证 | **待发布，当前无公开下载链接** |
+| `Codex Aura 0.4.0 arm64.dmg.zip` | Apple 芯片 arm64；声明最低 macOS 14，当前仅在 macOS 26 做过隔离启动验证 | [实验性预发布下载](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/Codex.Aura.0.4.0.arm64.dmg.zip) |
 
-ZIP 解压后得到 `.dmg` 安装镜像。安装包将放在 GitHub Releases，确认上传和下载成功后才在这里加入真实链接；不会把二进制提交进源码历史。当前没有 Intel / Universal 2 下载包。它采用 **ad-hoc 临时签名，未公证**，浏览器下载后的 Gatekeeper 体验尚未验收。
+ZIP 解压后得到 `.dmg` 安装镜像。[实验性 Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.0-experimental) 与 [SHA-256 校验文件](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/SHA256SUMS-0.4.0.txt) 已发布，公开下载字节与本地候选一致；二进制仅放在 Releases。当前没有 Intel / Universal 2 下载包。它采用 **ad-hoc 临时签名，未公证**，浏览器下载后的 Gatekeeper 体验尚未验收。
 
 1. 单独安装兼容的 Codex，并在 Codex 中以 ChatGPT 账号登录。本工具不内置 Codex、不索取登录凭据。
 2. 下载 `.dmg.zip` 和对应 `SHA256SUMS-0.4.0.txt`，核对 SHA-256，再解压 ZIP。
@@ -20,11 +20,11 @@ ZIP 解压后得到 `.dmg` 安装镜像。安装包将放在 GitHub Releases，�
 
 若系统阻止打开，仅在确认来源、哈希和设备政策后参考 [Apple 官方说明](https://support.apple.com/en-us/102445) 的“隐私与安全 → 仍要打开”。遇到恶意或损坏提示请停止，不忽略警告、不关闭系统保护，也不移除下载隔离属性。
 
-需要自行编译时，直接看本页的 [源码编译运行教程](#从源码构建)。仓库公开后，Code → Download ZIP 得到源码快照；想安装应用请选择 Releases 中的 `.dmg.zip`。[GitHub 官方说明](https://docs.github.com/en/repositories/working-with-files/using-files/downloading-source-code-archives)
+需要自行编译时，直接看本页的 [源码编译运行教程](#从源码构建)。Code → Download ZIP 得到源码快照；想安装应用请选择 Releases 中的 `.dmg.zip`。[GitHub 官方说明](https://docs.github.com/en/repositories/working-with-files/using-files/downloading-source-code-archives)
 
 本项目采用 **PolyForm Noncommercial 1.0.0**：源码公开，按许可证允许非商业用途；商业用途需另行授权。它不是 OSI 意义的标准开源项目。详见 [LICENSE](LICENSE)、[NOTICE](NOTICE) 与 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
-> **0.4.0 本地候选。** 新 arm64 App、DMG 与包含该 DMG 的 ZIP 已在本机生成，并通过只读挂载、内容、签名完整性和隔离模拟启动检查。公开仓库已创建，源码首次提交与安装包 Release 尚未完成；没有完成真实账号、Intel、macOS 14 实机、UI 或浏览器下载后的安装验收。旧 0.3.x 包不属于本版。
+> **0.4.0 实验性预发布。** 新 arm64 App、DMG 与包含该 DMG 的 ZIP 已在本机生成，并通过只读挂载、内容、签名完整性和隔离模拟启动检查。源码与实验性安装包 Release 已发布，公开下载的 SHA-256 已核对；没有完成真实账号、Intel、macOS 14 实机、UI 或浏览器下载后的安装验收。旧 0.3.x 包不属于本版。
 
 本工具独立开发，与 OpenAI、ChatGPT、Codex、X 和 Google 无官方隶属、赞助或背书关系。相关名称和商标属于各自权利人。
 
