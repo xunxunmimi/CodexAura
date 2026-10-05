@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright © 2026 CC (@xunxunmimi). See LICENSE and NOTICE. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="116" y1="88" x2="904" y2="936" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a2540"/>
+      <stop offset="0.47" stop-color="#17103d"/>
+      <stop offset="1" stop-color="#070b18"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="180" y1="180" x2="844" y2="844" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4ff6ff"/>
+      <stop offset="0.32" stop-color="#3b82f6"/>
+      <stop offset="0.68" stop-color="#9b5cff"/>
+      <stop offset="1" stop-color="#ff4fb8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(512 492) rotate(90) scale(420)">
+      <stop offset="0" stop-color="#4ff6ff" stop-opacity=".19"/>
+      <stop offset="1" stop-color="#4ff6ff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+  <rect x="40" y="40" width="944" height="944" rx="220" fill="url(#bg)"/>
+  <rect x="40" y="40" width="944" height="944" rx="220" fill="url(#glow)"/>
+  <circle cx="512" cy="512" r="292" fill="none" stroke="#4ff6ff" stroke-opacity=".2" stroke-width="82" filter="url(#shadow)"/>
+  <circle cx="512" cy="512" r="292" fill="none" stroke="#ffffff" stroke-opacity=".09" stroke-width="72"/>
+  <circle cx="512" cy="512" r="292" fill="none" stroke="url(#ring)" stroke-width="72" stroke-linecap="round" stroke-dasharray="1550 286" transform="rotate(-90 512 512)"/>
+  <path d="M560 239 407 528h112l-57 257 163-316H508l52-230Z" fill="#fff"/>
+  <circle cx="766" cy="260" r="17" fill="#fff" opacity=".94"/>
+  <circle cx="794" cy="298" r="8" fill="#4ff6ff" opacity=".85"/>
+  <path d="m259 747 9 23 23 9-23 9-9 23-9-23-23-9 23-9 9-23Z" fill="#9b5cff"/>
+</svg>

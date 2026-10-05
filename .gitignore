@@ -1,0 +1,27 @@
+.DS_Store
+.build/
+.build-*/
+.cache/
+.swiftpm/
+dist/
+*.dSYM/
+*.xcuserstate
+xcuserdata/
+
+# Local account/configuration material and signing secrets must never be committed.
+.codex/
+auth.json
+sessions/
+.env
+.env.*
+!.env.example
+*.p12
+*.p8
+*.pem
+*.key
+*.mobileprovision
+
+# Ignore rules are not a substitute for reviewing the exact staged file list.
+
+# Retired local helper is not part of the public source candidate or packages.
+/AppBundle/首次运行修复.command

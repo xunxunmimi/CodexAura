@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright © 2026 CC (@xunxunmimi). See LICENSE and NOTICE. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="440" viewBox="0 0 700 440">
+  <defs>
+    <linearGradient id="bg" x1="24" y1="20" x2="676" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071d31"/>
+      <stop offset=".5" stop-color="#171038"/>
+      <stop offset="1" stop-color="#080b17"/>
+    </linearGradient>
+    <radialGradient id="a" cx="0" cy="0" r="1" gradientTransform="translate(166 121) rotate(42) scale(235 185)">
+      <stop stop-color="#22d3ee" stop-opacity=".24"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="b" cx="0" cy="0" r="1" gradientTransform="translate(576 344) rotate(-138) scale(260 190)">
+      <stop stop-color="#a855f7" stop-opacity=".24"/>
+      <stop offset="1" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="line" x1="265" y1="245" x2="443" y2="245" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4ff6ff"/>
+      <stop offset="1" stop-color="#b667ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="700" height="440" fill="url(#bg)"/>
+  <rect width="700" height="440" fill="url(#a)"/>
+  <rect width="700" height="440" fill="url(#b)"/>
+  <g fill="#fff" font-family="-apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif" text-anchor="middle">
+    <text x="350" y="52" font-size="25" font-weight="800" letter-spacing="4">CODEX AURA</text>
+    <text x="350" y="77" font-size="12" fill-opacity=".55" letter-spacing="1">GPT 用量，一眼尽览</text>
+    <text x="350" y="110" font-size="13" fill-opacity=".78">① 将 Codex Aura 拖入 Applications</text>
+    <text x="350" y="290" font-size="13" fill-opacity=".78">② 从应用程序打开；安全提示请参考 Apple 官方说明</text>
+    <text x="350" y="420" font-size="10.5" fill-opacity=".42">Made by CC · @xunxunmimi · 临时签名版本，尚未公证</text>
+  </g>
+  <path d="M270 210h156" stroke="url(#line)" stroke-width="3" stroke-linecap="round"/>
+  <path d="m415 199 13 11-13 11" fill="none" stroke="#b667ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="350" cy="210" r="4" fill="#fff" opacity=".8"/>
+  <g fill="#fff" opacity=".26">
+    <circle cx="72" cy="98" r="2"/><circle cx="622" cy="111" r="1.5"/><circle cx="548" cy="63" r="2"/>
+    <circle cx="118" cy="337" r="1.5"/><circle cx="647" cy="312" r="2"/><circle cx="46" cy="270" r="1"/>
+  </g>
+</svg>
