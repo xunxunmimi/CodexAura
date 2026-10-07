@@ -31,36 +31,45 @@ struct CodexAuraApp: App {
 }
 
 @MainActor
-private final class DraggableStatusButton: NSButton {
-    var onCommandDragEnded: (() -> Void)?
+private final class BackupStatusButton: NSButton {
+    var didDrag: (() -> Void)?
 
     override func mouseDown(with event: NSEvent) {
         if event.modifierFlags.contains(.command), let window {
             window.performDrag(with: event)
-            onCommandDragEnded?()
-            return
+            didDrag?()
+        } else {
+            super.mouseDown(with: event)
         }
-        super.mouseDown(with: event)
     }
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let store = UsageStore()
     private let popover = NSPopover()
     private var statusItem: NSStatusItem?
-    private var notchPanel: NSPanel?
-    private var notchButton: DraggableStatusButton?
-    private var usesNotchPanel = false
+    private var fallbackWindow: NSWindow?
+    private var placementTimer: Timer?
+    private var backupStatusPanel: NSPanel?
+    private var backupStatusButton: BackupStatusButton?
     private var lastPopoverRefreshAt = Date.distantPast
     private var cancellables = Set<AnyCancellable>()
-    private let notchPositionKey = "CodexAuraNotchOffsetX.v1"
+    private let lowQuotaAlertKeyPrefix = "CodexAura.LowQuotaAlert.v1."
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
+        // Seed the saved ordering once. On notched displays macOS can otherwise
+        // assign a new item's default slot behind the camera. Subsequent
+        // Command-drags remain owned and persisted by the system.
+        let autosaveName = "CodexAuraStatusItemSystemV6"
+        let positionKey = "NSStatusItem Preferred Position " + autosaveName
+        if UserDefaults.standard.object(forKey: positionKey) == nil {
+            UserDefaults.standard.set(200, forKey: positionKey)
+        }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.autosaveName = "CodexAuraStatusItemCompactV4"
+        item.autosaveName = autosaveName
         item.isVisible = true
 
         guard let button = item.button else {
@@ -85,34 +94,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController = hostingController
 
         statusItem = item
-        configureNotchSafePlacement()
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(screenParametersDidChange(_:)),
-            name: NSApplication.didChangeScreenParametersNotification,
-            object: nil
-        )
-
+        placementTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.updateFallbackAccess() }
+        }
         store.$snapshot
             .receive(on: RunLoop.main)
             .sink { [weak self] snapshot in
                 guard let self else { return }
-                if let remaining = snapshot.remainingPercent {
+                let fiveHourRemaining = snapshot.fiveHourRemainingPercent
+                let emphasizedRemaining = fiveHourRemaining ?? snapshot.weeklyRemainingPercent
+                let lowQuota = self.lowQuotaDescription(for: snapshot)
+                if let remaining = emphasizedRemaining {
                     let image = self.statusImage(for: remaining)
-                    let toolTip = "Codex Aura · \(snapshot.windowTitle)剩余 \(Int(remaining.rounded()))%"
+                    let windowLabel = fiveHourRemaining == nil ? "本周剩余" : "5小时剩余"
+                    let toolTip = lowQuota.map { "Codex Aura · ⚠ \($0)" }
+                        ?? "Codex Aura · \(windowLabel) \(Int(remaining.rounded()))%"
                     self.statusItem?.button?.image = image
                     self.statusItem?.button?.toolTip = toolTip
-                    self.notchButton?.image = image
-                    self.notchButton?.toolTip = toolTip + " · ⌘拖动位置"
+                    self.statusItem?.button?.contentTintColor = lowQuota == nil ? nil : .systemRed
                 } else {
                     let image = self.statusImage(for: nil)
                     let toolTip = "Codex Aura · 正在同步用量"
                     self.statusItem?.button?.image = image
                     self.statusItem?.button?.toolTip = toolTip
-                    self.notchButton?.image = image
-                    self.notchButton?.toolTip = toolTip + " · ⌘拖动位置"
+                    self.statusItem?.button?.contentTintColor = nil
                 }
+                self.presentLowQuotaIfNeeded(snapshot)
+                self.backupStatusButton?.image = self.statusItem?.button?.image
+                self.backupStatusButton?.contentTintColor = lowQuota == nil ? .white : .systemRed
             }
             .store(in: &cancellables)
 
@@ -149,18 +158,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func screenParametersDidChange(_ notification: Notification) {
-        configureNotchSafePlacement()
-    }
-
     private func showPopover() {
-        let button = usesNotchPanel ? notchButton : statusItem?.button
-        guard let button else { return }
-
         let now = Date()
         if now.timeIntervalSince(lastPopoverRefreshAt) >= 2 {
             lastPopoverRefreshAt = now
             store.refresh()
+        }
+
+        updateFallbackAccess()
+        let anchor = hasUsableStatusAnchor ? statusItem?.button : backupStatusButton
+        guard let button = anchor, button.window?.isVisible == true else {
+            popover.performClose(nil)
+            showFallbackWindow()
+            return
+        }
+        if fallbackWindow?.isVisible == true {
+            fallbackWindow?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
         }
 
         // Recreate the dashboard for every opening so both optional sections
@@ -175,94 +190,139 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func configureNotchSafePlacement() {
-        guard let screen = NSScreen.main,
-              let rightArea = screen.auxiliaryTopRightArea,
-              screen.safeAreaInsets.top > 0 else {
-            usesNotchPanel = false
-            notchPanel?.orderOut(nil)
-            statusItem?.isVisible = true
-            return
+    private var hasUsableStatusAnchor: Bool {
+        guard let button = statusItem?.button,
+              let window = button.window,
+              statusItem?.isVisible == true,
+              !button.bounds.isEmpty else { return false }
+        let frame = button.convert(button.bounds, to: nil)
+        let screenFrame = window.convertToScreen(frame)
+        guard let screen = NSScreen.screens.first(where: { $0.frame.intersects(screenFrame) }),
+              screenFrame.minY >= screen.visibleFrame.maxY - 4,
+              screenFrame.maxX <= screen.frame.maxX,
+              screenFrame.minX >= screen.frame.minX else { return false }
+        if screen.safeAreaInsets.top > 0, let rightArea = screen.auxiliaryTopRightArea {
+            return rightArea.contains(NSPoint(x: screenFrame.midX, y: screenFrame.midY))
         }
+        return true
+    }
 
-        usesNotchPanel = true
-        statusItem?.isVisible = false
-
-        let buttonSize = NSSize(width: rightArea.height, height: rightArea.height)
-        let panel: NSPanel
-        let button: DraggableStatusButton
-
-        if let existingPanel = notchPanel, let existingButton = notchButton {
-            panel = existingPanel
-            button = existingButton
+    private func updateFallbackAccess() {
+        statusItem?.isVisible = true
+        if hasUsableStatusAnchor {
+            backupStatusPanel?.orderOut(nil)
         } else {
-            panel = NSPanel(
-                contentRect: NSRect(origin: .zero, size: buttonSize),
+            showBackupStatusButton()
+        }
+        // Keep a Dock entry whenever the system cannot provide a usable menu
+        // bar anchor. Reopening the app must always offer a reachable window.
+        let needsDock = (!hasUsableStatusAnchor && backupStatusPanel?.isVisible != true)
+            || fallbackWindow?.isVisible == true
+        let policy: NSApplication.ActivationPolicy = needsDock ? .regular : .accessory
+        if NSApp.activationPolicy() != policy { NSApp.setActivationPolicy(policy) }
+    }
+
+    private func showBackupStatusButton() {
+        guard let screen = NSScreen.main else { return }
+        let area = screen.auxiliaryTopRightArea ?? NSRect(
+            x: screen.frame.minX,
+            y: screen.visibleFrame.maxY,
+            width: screen.frame.width,
+            height: max(screen.frame.maxY - screen.visibleFrame.maxY, 24)
+        )
+        let size = min(max(area.height, 24), 32)
+        if backupStatusPanel == nil {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: size, height: size),
                 styleMask: [.borderless, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false
             )
-            // Keep the button above long application menus so it never becomes
-            // visually covered or impossible to click.
             panel.level = .popUpMenu
             panel.backgroundColor = .clear
             panel.isOpaque = false
             panel.hasShadow = false
             panel.hidesOnDeactivate = false
-            panel.ignoresMouseEvents = false
-            panel.becomesKeyOnlyIfNeeded = true
-            panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+            panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
             panel.isMovable = true
-            panel.isMovableByWindowBackground = false
-
-            button = DraggableStatusButton(frame: NSRect(origin: .zero, size: buttonSize))
+            let button = BackupStatusButton(frame: NSRect(x: 0, y: 0, width: size, height: size))
             button.isBordered = false
             button.imagePosition = .imageOnly
             button.imageScaling = .scaleNone
-            button.image = statusItem?.button?.image
-            button.contentTintColor = .white
-            button.toolTip = (statusItem?.button?.toolTip ?? "Codex Aura") + " · ⌘拖动位置"
-            button.setButtonType(.momentaryChange)
             button.target = self
             button.action = #selector(togglePopover(_:))
-            button.onCommandDragEnded = { [weak self] in
-                self?.finishNotchDrag()
+            button.toolTip = "Codex Aura · 点击查看用量 · ⌘拖动位置"
+            button.didDrag = { [weak self] in
+                guard let frame = self?.backupStatusPanel?.frame else { return }
+                UserDefaults.standard.set(Double(frame.minX - area.minX), forKey: "CodexAuraBackupStatusOffset.v1")
             }
             panel.contentView = button
-
-            notchPanel = panel
-            notchButton = button
+            backupStatusPanel = panel
+            backupStatusButton = button
         }
-
-        let maximumOffset = max(rightArea.width - buttonSize.width, 0)
-        let savedOffset = (UserDefaults.standard.object(forKey: notchPositionKey) as? NSNumber)
-            .map { CGFloat(truncating: $0) } ?? 8
-        let safeOffset = min(max(savedOffset, 0), maximumOffset)
-        let origin = NSPoint(
-            x: rightArea.minX + safeOffset,
-            y: rightArea.midY - (buttonSize.height / 2)
-        )
-        panel.setFrame(NSRect(origin: origin, size: buttonSize), display: true)
-        button.frame = NSRect(origin: .zero, size: buttonSize)
+        guard let panel = backupStatusPanel else { return }
+        let saved = UserDefaults.standard.object(forKey: "CodexAuraBackupStatusOffset.v1") as? NSNumber
+        let offset = min(max(saved?.doubleValue ?? 8, 0), max(area.width - size, 0))
+        panel.setFrame(NSRect(x: area.minX + offset, y: area.midY - size / 2, width: size, height: size), display: true)
+        backupStatusButton?.frame = NSRect(x: 0, y: 0, width: size, height: size)
+        backupStatusButton?.image = statusItem?.button?.image
+        backupStatusButton?.contentTintColor = statusItem?.button?.contentTintColor ?? .white
         panel.orderFrontRegardless()
     }
 
-    private func finishNotchDrag() {
-        guard let panel = notchPanel else { return }
-        let screen = NSScreen.screens.first { $0.frame.intersects(panel.frame) } ?? NSScreen.main
-        guard let screen,
-              let rightArea = screen.auxiliaryTopRightArea,
-              screen.safeAreaInsets.top > 0 else {
-            configureNotchSafePlacement()
+    private func showFallbackWindow() {
+        NSApp.setActivationPolicy(.regular)
+        if let fallbackWindow {
+            fallbackWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
             return
         }
 
-        let maximumX = max(rightArea.maxX - panel.frame.width, rightArea.minX)
-        let safeX = min(max(panel.frame.minX, rightArea.minX), maximumX)
-        let safeY = rightArea.midY - (panel.frame.height / 2)
-        panel.setFrameOrigin(NSPoint(x: safeX, y: safeY))
-        UserDefaults.standard.set(Double(safeX - rightArea.minX), forKey: notchPositionKey)
-        panel.orderFrontRegardless()
+        let panel = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 410),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = "Codex Aura · 可拖动窗口"
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        panel.isMovable = true
+        panel.isMovableByWindowBackground = true
+        panel.level = .floating
+        panel.delegate = self
+        panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        let controller = NSHostingController(
+            rootView: DashboardView(onPanelHeightChange: { [weak self] height in
+                self?.resizeFallbackWindow(to: height)
+            }).environmentObject(store)
+        )
+        controller.sizingOptions = [.preferredContentSize]
+        panel.contentViewController = controller
+        fallbackWindow = panel
+        if !panel.setFrameUsingName("CodexAuraFallbackWindow.v1") { panel.center() }
+        panel.setFrameAutosaveName("CodexAuraFallbackWindow.v1")
+        panel.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func resizeFallbackWindow(to height: CGFloat) {
+        guard let panel = fallbackWindow else { return }
+        let top = panel.frame.maxY
+        panel.setContentSize(NSSize(width: 360, height: height))
+        var frame = panel.frame
+        frame.origin.y = top - frame.height
+        if let screen = panel.screen ?? NSScreen.main {
+            frame.origin.x = min(max(frame.minX, screen.visibleFrame.minX), screen.visibleFrame.maxX - frame.width)
+            frame.origin.y = max(frame.origin.y, screen.visibleFrame.minY)
+        }
+        panel.setFrame(frame, display: true)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        if hasUsableStatusAnchor || backupStatusPanel?.isVisible == true {
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     private func showWelcomePopoverIfNeeded() {
@@ -286,6 +346,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if !self.popover.isShown {
                 self.showPopover()
             }
+        }
+    }
+
+    private func lowQuotaDescription(for snapshot: UsageSnapshot) -> String? {
+        if let remaining = snapshot.weeklyRemainingPercent, remaining <= 1 {
+            return remaining <= 0 ? "每周额度已用尽" : "每周额度仅剩 \(Int(remaining.rounded()))%"
+        }
+        if let remaining = snapshot.fiveHourRemainingPercent, remaining <= 1 {
+            return remaining <= 0 ? "5小时额度已用尽" : "5小时额度仅剩 \(Int(remaining.rounded()))%"
+        }
+        return nil
+    }
+
+    private func presentLowQuotaIfNeeded(_ snapshot: UsageSnapshot) {
+        guard snapshot.updatedAt != .distantPast else { return }
+        let windows: [(name: String, remaining: Double?, resetsAt: Date?)] = [
+            ("weekly", snapshot.weeklyRemainingPercent, snapshot.weeklyResetsAt),
+            ("fiveHour", snapshot.fiveHourRemainingPercent, snapshot.fiveHourResetsAt)
+        ]
+        let defaults = UserDefaults.standard
+        var shouldPresent = false
+
+        for window in windows {
+            guard let remaining = window.remaining else { continue }
+            let key = lowQuotaAlertKeyPrefix + window.name
+            if remaining > 1 {
+                defaults.removeObject(forKey: key)
+                continue
+            }
+
+            let cycle = window.resetsAt.map { String(Int($0.timeIntervalSince1970)) } ?? "unknown"
+            guard defaults.string(forKey: key) != cycle else { continue }
+            defaults.set(cycle, forKey: key)
+            shouldPresent = true
+        }
+
+        if shouldPresent, !popover.isShown {
+            showPopover()
         }
     }
 

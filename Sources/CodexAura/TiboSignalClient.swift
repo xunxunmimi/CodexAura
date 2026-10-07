@@ -36,6 +36,7 @@ struct TiboSignalClient {
             )
             posts[0] = latest
         }
+        guard !latest.text.isEmpty else { throw UsageError.malformedResponse }
         let translated = translate ? translateToChinese(latest.text) : nil
         let translatedLatest = TiboPost(
             id: latest.id,
@@ -51,22 +52,38 @@ struct TiboSignalClient {
         )
     }
 
-    private func parsePosts(from html: String) -> [TiboPost] {
-        let pattern = #"data-href="/thsottiaux/status/([0-9]+)"[\s\S]*?<meta content="([^"]*)" itemProp="text""#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+    func parsePosts(from html: String) -> [TiboPost] {
         let range = NSRange(html.startIndex..<html.endIndex, in: html)
+        var legacyTextByID: [String: String] = [:]
+
+        // Keep support for X's older server-rendered profile cards so already
+        // cached page variants still retain their preview text.
+        let legacyPattern = #"data-href="/thsottiaux/status/([0-9]+)"[\s\S]*?<meta content="([^"]*)" itemProp="text""#
+        if let regex = try? NSRegularExpression(pattern: legacyPattern) {
+            for match in regex.matches(in: html, range: range) {
+                guard match.numberOfRanges == 3,
+                      let idRange = Range(match.range(at: 1), in: html),
+                      let textRange = Range(match.range(at: 2), in: html) else { continue }
+                legacyTextByID[String(html[idRange])] = decodeHTMLEntities(String(html[textRange]))
+            }
+        }
+
+        // X's current profile HTML no longer emits the old itemProp="text"
+        // meta node. Discover posts from their stable status URLs, then load
+        // the complete body from the newest post's own page.
+        let idPattern = #"(?:data-href|href)="/thsottiaux/status/([0-9]+)""#
+        guard let regex = try? NSRegularExpression(pattern: idPattern) else { return [] }
         var seen = Set<String>()
 
         return regex.matches(in: html, range: range).compactMap { match in
-            guard match.numberOfRanges == 3,
-                  let idRange = Range(match.range(at: 1), in: html),
-                  let textRange = Range(match.range(at: 2), in: html) else { return nil }
+            guard match.numberOfRanges == 2,
+                  let idRange = Range(match.range(at: 1), in: html) else { return nil }
             let id = String(html[idRange])
             guard seen.insert(id).inserted,
                   let publishedAt = dateFromSnowflake(id) else { return nil }
             return TiboPost(
                 id: id,
-                text: decodeHTMLEntities(String(html[textRange])),
+                text: legacyTextByID[id] ?? "",
                 translatedText: nil,
                 publishedAt: publishedAt
             )
@@ -89,7 +106,16 @@ struct TiboSignalClient {
         return parseFullPostText(from: html, id: id)
     }
 
-    private func parseFullPostText(from html: String, id: String) -> String? {
+    func parseFullPostText(from html: String, id: String) -> String? {
+        // X's current status page exposes the complete focal post here.
+        let escapedID = NSRegularExpression.escapedPattern(for: id)
+        let bodyTextPattern = #"bodyText:"((?:\\.|[^"\\])*)",canonicalPath:"/thsottiaux/status/"#
+            + escapedID
+            + #"""#
+        if let value = capturedSerializedString(in: html, pattern: bodyTextPattern) {
+            return value
+        }
+
         let encodedID = Data("Tweet:\(id)".utf8).base64EncodedString()
         let noteAnchor = NSRegularExpression.escapedPattern(
             for: "\"client:\(encodedID):note_tweet\""
@@ -130,24 +156,17 @@ struct TiboSignalClient {
         return text.isEmpty ? nil : text
     }
 
-    private func makeSignal(
+    func makeSignal(
         posts: [TiboPost],
         latestPost: TiboPost,
         scheduledResetAt: Date?,
         isLive: Bool
     ) -> TiboResetSignal {
         let now = Date()
-        let candidates = posts
-            .filter { (0..<(14 * 86_400)).contains(now.timeIntervalSince($0.publishedAt)) }
-            .map { post -> (post: TiboPost, probability: Double, reason: String) in
-                let base = baseScore(for: post.text)
-                let hours = max(now.timeIntervalSince(post.publishedAt) / 3_600, 0)
-                let decayed = 8 + (base.score - 8) * pow(0.5, hours / 48)
-                return (post, decayed, base.reason)
-            }
-
-        let strongest = candidates.max { $0.probability < $1.probability }
-        var probability = strongest?.probability ?? 8
+        let age = max(now.timeIntervalSince(latestPost.publishedAt), 0)
+        let recent = age < 14 * 86_400
+        let base = baseScore(for: latestPost.text)
+        var probability = recent ? 8 + (base.score - 8) * pow(0.5, age / 3_600 / 48) : 8
 
         if let scheduledResetAt {
             let hoursToScheduledReset = scheduledResetAt.timeIntervalSince(now) / 3_600
@@ -168,9 +187,9 @@ struct TiboSignalClient {
         return TiboResetSignal(
             probability: rounded,
             verdict: verdict,
-            reason: strongest?.reason ?? "最近公开帖子里没有明显 reset 信号",
+            reason: recent ? base.reason : "最新帖子超过 14 天，没有近期信号",
             latestPost: latestPost,
-            signalPostID: strongest?.post.id,
+            signalPostID: recent ? latestPost.id : nil,
             isLive: isLive,
             updatedAt: now
         )
@@ -183,7 +202,7 @@ struct TiboSignalClient {
             return (5, "Tibo 明确否定了近期重置")
         }
 
-        let confirmedPhrases = ["reset button pressed", "we have reset", "i have reset", "reset is done"]
+        let confirmedPhrases = ["reset button pressed", "we have reset", "i have reset", "reset is done", "reset has been propagated", "reset was propagated", "limits have been reset"]
         if confirmedPhrases.contains(where: value.contains) {
             return (99, "Tibo 已明确表示按下了重置按钮")
         }
@@ -223,7 +242,7 @@ struct TiboSignalClient {
 
         var request = URLRequest(url: url)
         request.timeoutInterval = 12
-        request.setValue("CodexAura/0.4.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("CodexAura/0.4.1", forHTTPHeaderField: "User-Agent")
         guard let data = try? synchronousData(for: request),
               let root = try? JSONSerialization.jsonObject(with: data) as? [Any],
               let segments = root.first as? [Any] else { return nil }

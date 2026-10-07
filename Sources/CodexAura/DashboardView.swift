@@ -3,11 +3,19 @@ import AppKit
 import SwiftUI
 
 struct DashboardView: View {
+    var onPanelHeightChange: ((CGFloat) -> Void)? = nil
     @EnvironmentObject private var store: UsageStore
     @AppStorage("usdPerMillionTokens") private var usdPerMillionTokens = 1.25
     @State private var isDailyUsageExpanded = false
     @State private var isTiboExpanded = false
     @State private var showsSettings = false
+    @State private var selectedDuration: Int?
+
+    private var selectedWindow: QuotaWindow? {
+        let windows = store.snapshot.windows
+        if let selectedDuration, let selected = windows.first(where: { $0.durationMins == selectedDuration }) { return selected }
+        return windows.first(where: { ($0.remainingPercent ?? 100) <= 1 }) ?? windows.first
+    }
 
     var body: some View {
         ZStack {
@@ -17,13 +25,28 @@ struct DashboardView: View {
                 header
 
                 QuotaAuraCard(
-                    remainingPercent: store.snapshot.remainingPercent,
-                    resetsAt: store.snapshot.resetsAt,
+                    remainingPercent: selectedWindow?.remainingPercent ?? store.snapshot.remainingPercent,
+                    resetsAt: selectedWindow?.resetsAt ?? store.snapshot.resetsAt,
                     planName: store.snapshot.planName,
-                    windowTitle: store.snapshot.windowTitle,
-                    isRefreshing: store.isRefreshing
+                    windowTitle: selectedWindow?.title ?? store.snapshot.windowTitle,
+                    isRefreshing: store.isRefreshing,
+                    resetCreditCount: store.snapshot.resetCreditAvailableCount,
+                    resetCredits: store.snapshot.resetCredits
                 )
 
+                if store.snapshot.windows.count > 1 {
+                    HStack(spacing: 8) {
+                        ForEach(store.snapshot.windows, id: \.durationMins) { window in
+                            Button { selectedDuration = window.durationMins } label: {
+                                Text("\(window.title) · \(window.remainingPercent.map { "\(Int($0.rounded()))%" } ?? "—")")
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 7)
+                                    .background(selectedWindow?.durationMins == window.durationMins ? .cyan.opacity(0.18) : .white.opacity(0.05), in: Capsule())
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
                 if store.radarEnabled {
                 TiboResetRadarCard(
                     signal: store.tiboSignal,
@@ -54,6 +77,8 @@ struct DashboardView: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.84), value: isTiboExpanded)
         .background(.ultraThinMaterial)
         .preferredColorScheme(.dark)
+        .onAppear { onPanelHeightChange?(panelHeight) }
+        .onChange(of: panelHeight) { _, height in onPanelHeightChange?(height) }
     }
 
     private var panelHeight: CGFloat {
@@ -61,7 +86,7 @@ struct DashboardView: View {
         let dailyUsageHeight: CGFloat = isDailyUsageExpanded ? 112 : 0
         let tiboDetailHeight: CGFloat = store.radarEnabled && isTiboExpanded ? 236 : 0
         let contentHeight = collapsedHeight + dailyUsageHeight + tiboDetailHeight
-        return contentHeight + (store.errorMessage == nil ? 0 : 82)
+        return contentHeight + (store.errorMessage == nil ? 0 : 82) + (store.snapshot.windows.count > 1 ? 42 : 0)
     }
 
     @ViewBuilder
@@ -364,6 +389,7 @@ private struct TiboResetRadarCard: View {
                         .foregroundStyle(tint.opacity(0.72))
                         .frame(width: 16)
                 }
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(isExpanded ? "收起帖子详情" : "展开帖子详情")
@@ -400,6 +426,8 @@ private struct TiboResetRadarCard: View {
                                 .textSelection(.enabled)
                         }
                         .frame(height: 170)
+                        .contentShape(Rectangle())
+                        .onTapGesture { isExpanded = false }
                     }
                     .padding(10)
                     .background(.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -466,12 +494,19 @@ private struct TiboResetRadarCard: View {
             RoundedRectangle(cornerRadius: 19, style: .continuous)
                 .stroke(tint.opacity(0.16), lineWidth: 1)
         }
+        .background {
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .fill(.clear)
+                .contentShape(Rectangle())
+                .onTapGesture { isExpanded = false }
+        }
     }
 
     private func displayedText(for post: TiboPost) -> String {
-        if showsTranslation,
-           let translatedText = post.translatedText,
-           !translatedText.isEmpty {
+        if showsTranslation {
+            guard let translatedText = post.translatedText, !translatedText.isEmpty else {
+                return "中文翻译未开启或暂时不可用，请在设置中开启，或切换英文原文。"
+            }
             return translatedText
         }
         return post.text
@@ -556,6 +591,10 @@ private struct QuotaAuraCard: View {
     let planName: String?
     let windowTitle: String
     let isRefreshing: Bool
+    let resetCreditCount: Int?
+    let resetCredits: [RateLimitResetCredit]
+    @State private var showsCredits = false
+    private var lowQuota: Bool { remainingPercent.map { $0 <= 1 } ?? false }
 
     private var progress: Double {
         min(max((remainingPercent ?? 0) / 100, 0), 1)
@@ -570,10 +609,11 @@ private struct QuotaAuraCard: View {
                     if let remainingPercent {
                         Text("\(Int(remainingPercent.rounded()))")
                             .font(.system(size: 30, weight: .black, design: .rounded))
+                            .foregroundStyle(lowQuota ? Color.red : Color.white)
                             .contentTransition(.numericText())
-                        Text("% 可用")
+                        Text(lowQuota ? (remainingPercent <= 0 ? "额度已用尽" : "仅剩 1%") : "% 可用")
                             .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(lowQuota ? Color.red : .white.opacity(0.55))
                     } else if isRefreshing {
                         ProgressView().controlSize(.small)
                     } else {
@@ -582,6 +622,32 @@ private struct QuotaAuraCard: View {
                 }
             }
             .frame(width: 132, height: 132)
+            .overlay(alignment: .bottom) {
+                if let resetCreditCount {
+                    Button { showsCredits.toggle() } label: {
+                        Label("重置卡 ×\(resetCreditCount)", systemImage: "arrow.counterclockwise.circle.fill")
+                            .font(.system(size: 8, weight: .black, design: .rounded))
+                            .padding(.horizontal, 9).padding(.vertical, 6)
+                            .background(LinearGradient(colors: [.orange, .pink, .purple], startPoint: .leading, endPoint: .trailing), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showsCredits) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("可用重置卡 ×\(resetCreditCount)").font(.headline)
+                            if resetCredits.isEmpty {
+                                Text(resetCreditCount == 0 ? "暂无可用重置卡" : "服务未提供到期明细").font(.caption)
+                            }
+                            ForEach(resetCredits) { credit in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(credit.title).font(.caption.bold())
+                                    Text(credit.expiresAt.map { "到期：\($0.formatted(date: .abbreviated, time: .shortened))" } ?? "到期时间未知")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }.padding(16).frame(width: 250)
+                    }
+                }
+            }
 
             VStack(alignment: .leading, spacing: 11) {
                 HStack(spacing: 7) {
