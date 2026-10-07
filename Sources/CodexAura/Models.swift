@@ -38,6 +38,24 @@ struct TiboResetSignal: Equatable {
     }
 }
 
+struct RateLimitResetCredit: Equatable, Identifiable {
+    let id: String
+    let title: String
+    let expiresAt: Date?
+}
+
+struct QuotaWindow: Equatable {
+    let usedPercent: Double?
+    let resetsAt: Date?
+    let durationMins: Int
+    var remainingPercent: Double? { usedPercent.map { min(max(100 - $0, 0), 100) } }
+    var title: String {
+        if durationMins == 10_080 { return "每周额度" }
+        if durationMins % 60 == 0 { return "\(durationMins / 60) 小时额度" }
+        return "\(durationMins) 分钟额度"
+    }
+}
+
 struct UsageSnapshot: Equatable {
     var usedPercent: Double?
     var resetsAt: Date?
@@ -47,6 +65,13 @@ struct UsageSnapshot: Equatable {
     var yesterday: DailyUsage
     var updatedAt: Date
     var warning: String?
+    var windows: [QuotaWindow] = []
+    var resetCreditAvailableCount: Int? = nil
+    var resetCredits: [RateLimitResetCredit] = []
+    var weeklyRemainingPercent: Double? { windows.first { $0.durationMins == 10_080 }?.remainingPercent }
+    var weeklyResetsAt: Date? { windows.first { $0.durationMins == 10_080 }?.resetsAt }
+    var fiveHourRemainingPercent: Double? { windows.first { $0.durationMins == 300 }?.remainingPercent }
+    var fiveHourResetsAt: Date? { windows.first { $0.durationMins == 300 }?.resetsAt }
 
     static var empty: UsageSnapshot {
         UsageSnapshot(usedPercent: nil, resetsAt: nil, windowDurationMins: nil, planName: nil, today: DailyUsage(dateKey: DateKeys.today, tokens: nil), yesterday: DailyUsage(dateKey: DateKeys.yesterday, tokens: nil), updatedAt: .distantPast, warning: nil)
