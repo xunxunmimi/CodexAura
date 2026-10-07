@@ -21,6 +21,48 @@ final class CodexAuraTests: XCTestCase {
         let week = client().makeSnapshot(rateResult: rate(minutes: 10_080), usageResult: nil, accountResult: nil)
         XCTAssertEqual(week.windowTitle, "每周额度")
     }
+
+    func testBothQuotaWindowsAndResetCardsPreserveMissingValues() {
+        let snapshot = client().makeSnapshot(rateResult: [
+            "rateLimits": [
+                "primary": ["usedPercent": 99, "windowDurationMins": 300],
+                "secondary": ["usedPercent": 12, "windowDurationMins": 10_080]
+            ],
+            "rateLimitResetCredits": ["availableCount": 2, "credits": [
+                ["id": "a", "status": "available", "expiresAt": 1_800_000_000],
+                ["id": "b", "status": "used"],
+                ["id": "c", "status": "available", "expiresAt": "invalid"]
+            ]]
+        ], usageResult: nil, accountResult: nil)
+        XCTAssertEqual(snapshot.weeklyRemainingPercent, 88)
+        XCTAssertEqual(snapshot.fiveHourRemainingPercent, 1)
+        XCTAssertEqual(snapshot.resetCreditAvailableCount, 2)
+        XCTAssertEqual(snapshot.resetCredits.count, 2)
+        XCTAssertNil(snapshot.resetCredits.last?.expiresAt)
+        XCTAssertNil(UsageSnapshot.empty.resetCreditAvailableCount)
+    }
+
+    func testModernBundledCodexPathsAreConsideredBeforeLegacy() {
+        let paths = CodexAppServerClient.executableCandidates(applicationRoots: [URL(fileURLWithPath: "/tmp/fictional-applications")])
+        XCTAssertTrue(paths.contains("/tmp/fictional-applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"))
+        XCTAssertTrue(paths[0].contains("codex-cli/CodexCLI.app"))
+    }
+
+    func testLatestPostAloneDeterminesRadarScore() {
+        let client = TiboSignalClient()
+        let latest = TiboPost(id: "2", text: "Tomorrow we bring back the 5h limit", translatedText: nil, publishedAt: Date())
+        let older = TiboPost(id: "1", text: "we have reset", translatedText: nil, publishedAt: Date().addingTimeInterval(-60))
+        let signal = client.makeSignal(posts: [older, latest], latestPost: latest, scheduledResetAt: nil, isLive: true)
+        XCTAssertEqual(signal.probability, 8)
+        XCTAssertEqual(signal.signalPostID, "2")
+    }
+
+    func testModernXPostBodyMatchesItsOwnID() {
+        let client = TiboSignalClient()
+        let html = #"bodyText:"Full\npost text",canonicalPath:"/thsottiaux/status/123""#
+        XCTAssertEqual(client.parseFullPostText(from: html, id: "123"), "Full\npost text")
+        XCTAssertNil(client.parseFullPostText(from: html, id: "456"))
+    }
     func testUnknownIsNotZeroOrFullQuota() {
         let snapshot = client().makeSnapshot(rateResult: nil, usageResult: nil, accountResult: nil)
         XCTAssertNil(snapshot.remainingPercent)
