@@ -6,16 +6,19 @@
 
 ## 下载与安装
 
-| 安装包 | 架构 / 系统 | 下载状态 |
-| --- | --- | --- |
-| `Codex Aura 0.4.0 arm64.dmg.zip` | Apple 芯片 arm64；声明最低 macOS 14，当前仅在 macOS 26 做过隔离启动验证 | [实验性预发布下载](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/Codex.Aura.0.4.0.arm64.dmg.zip) |
+更新时间：**2026-10-07（北京时间）**。最新版本：**0.4.1 实验性预发布**。
 
-ZIP 解压后得到 `.dmg` 安装镜像。[实验性 Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.0-experimental) 与 [SHA-256 校验文件](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/SHA256SUMS-0.4.0.txt) 已发布，公开下载字节与本地候选一致；二进制仅放在 Releases。当前没有 Intel / Universal 2 下载包。它采用 **ad-hoc 临时签名，未公证**，浏览器下载后的 Gatekeeper 体验尚未验收。
+| 安装包 | 更新时间 | 架构 / 系统 | 下载状态 |
+| --- | --- | --- | --- |
+| `Codex Aura 0.4.1 Universal.dmg.zip` | 2026-10-07 | Apple 芯片 arm64 + Intel x86_64；macOS 14+；Intel / macOS 14 实机未验收 | [最新实验版下载](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.1-experimental/Codex.Aura.0.4.1.Universal.dmg.zip) |
+| `Codex Aura 0.4.0 arm64.dmg.zip` | 2026-10-05 | Apple 芯片 arm64；仅在 macOS 26 做过隔离启动验证 | [历史实验版下载](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/Codex.Aura.0.4.0.arm64.dmg.zip) |
+
+ZIP 解压后得到 `.dmg` 安装镜像。二进制仅放在 [实验性 Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.1-experimental)，请核对对应 [SHA-256 校验文件](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.1-experimental/SHA256SUMS-0.4.1.txt)。最新包包含两种架构；Intel 运行未验收。它采用 **ad-hoc 临时签名，未公证**，浏览器下载后的 Gatekeeper 体验尚未验收。
 
 1. 单独安装兼容的 Codex，并在 Codex 中以 ChatGPT 账号登录。本工具不内置 Codex、不索取登录凭据。
-2. 下载 `.dmg.zip` 和对应 `SHA256SUMS-0.4.0.txt`，核对 SHA-256，再解压 ZIP。
+2. 下载 `.dmg.zip` 和对应 `SHA256SUMS-0.4.1.txt`，核对 SHA-256，再解压 ZIP。
 3. 双击解压得到的 `.dmg`，把 `Codex Aura.app` 拖到镜像中的 Applications。
-4. 从 Applications 启动；在菜单栏或刘海旁点击能量环。没有普通 Dock 主窗口。
+4. 从 Applications 启动；在菜单栏或刘海旁点击能量环。正常模式无 Dock 主窗口；菜单栏入口不可用时提供可拖动备用窗口。
 5. 在“CC · 设置与关于”查看隐私开关：日志统计、X 雷达、Google 翻译默认关闭。开启前请阅读下方隐私说明。
 
 若系统阻止打开，仅在确认来源、哈希和设备政策后参考 [Apple 官方说明](https://support.apple.com/en-us/102445) 的“隐私与安全 → 仍要打开”。遇到恶意或损坏提示请停止，不忽略警告、不关闭系统保护，也不移除下载隔离属性。
@@ -24,16 +27,26 @@ ZIP 解压后得到 `.dmg` 安装镜像。[实验性 Release](https://github.com
 
 本项目采用 **PolyForm Noncommercial 1.0.0**：源码公开，按许可证允许非商业用途；商业用途需另行授权。它不是 OSI 意义的标准开源项目。详见 [LICENSE](LICENSE)、[NOTICE](NOTICE) 与 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
-> **0.4.0 实验性预发布。** 新 arm64 App、DMG 与包含该 DMG 的 ZIP 已在本机生成，并通过只读挂载、内容、签名完整性和隔离模拟启动检查。源码与实验性安装包 Release 已发布，公开下载的 SHA-256 已核对；没有完成真实账号、Intel、macOS 14 实机、UI 或浏览器下载后的安装验收。旧 0.3.x 包不属于本版。
+> **0.4.1 实验性预发布。** 基于远端 0.4.0 逐项合入本地修复，保留隐私开关、数据来源、账号隔离历史及脱敏错误。没有完成真实账号、Intel、macOS 14 实机、多屏或浏览器下载后的安装验收。旧 0.3.x 包不属于本版。
 
 本工具独立开发，与 OpenAI、ChatGPT、Codex、X 和 Google 无官方隶属、赞助或背书关系。相关名称和商标属于各自权利人。
+
+## 0.4.1 更新记录（2026-10-07）
+
+- 修复刘海屏上独立图标不参与系统排列的问题，增加可达入口降级。
+- 兼容新版 ChatGPT 内置 Codex 路径和用户 Applications 目录。
+- 合入低额度提醒、重置卡到期查看、多个额度窗口切换。
+- 雷达仅判断最新帖；兼容新的帖子正文结构；翻译失败明确提示，不在中文标签下冒充译文。
+- 保留 0.4.0 的隐私默认值、许可、账号隔离历史和安全发布脚本，不整体覆盖远端。
 
 ## 功能
 
 - 菜单栏能量环、实际额度窗口标签与重置倒计时；只有服务返回 7 天窗口才称“每周额度”。
 - 今日、昨日 Token 统计，显示数据来源；缺失数据用“—”表示，不把未知当零。
 - 可切换参考单价的美元估算，它不是实际账单或官方报价。
-- 刘海屏安全区显示，按住 ⌘ 拖动位置；其他屏幕使用系统菜单栏图标。
+- 优先使用系统菜单栏图标，与其他图标一起排列，按住 ⌘ 拖动并记忆位置；不可见时尝试备用图标 / 可拖动窗口。
+- 同时返回多个窗口时可切换主显示；每周或 5 小时额度到 1% 及以下时，每个周期提醒一次。
+- 服务返回重置卡数量时显示按钮，点击查看到期明细。
 - “CC · 设置与关于”提供署名与隐私开关。
 - 原有 Tibo 雷达与翻译保留为实验功能，**默认关闭**；开启后只显示关键词分数，不称真实重置概率。
 
@@ -44,13 +57,15 @@ ZIP 解压后得到 `.dmg` 安装镜像。[实验性 Release](https://github.com
 | 系统 | macOS 14 或更新版本 |
 | Codex | 单独安装兼容的 Codex 程序，通过 ChatGPT 账号登录并具有可用额度数据 |
 | 账号 | API Key 登录不能替代订阅额度账号；服务支持与账号权限以 Codex 实际返回为准 |
-| 架构 | 原生构建为本机架构；本地下载包候选为 arm64；脚本支持双架构 Universal 2，但本版未验证 |
+| 架构 | 最新下载包为 Universal 2；两种架构构建 / 合并检查，Intel 实机未验收 |
 | 界面 | 当前主要为中文，附英文文档 |
 | 网络 | Codex 子进程可能连接 Codex 服务；X / Google 外联默认关闭 |
 | 签名 | 构建脚本使用 ad-hoc 临时签名，没有 Developer ID 签名或公证步骤 |
 | 构建工具 | Swift tools 5.10+、Xcode 或兼容 Command Line Tools/macOS SDK、Python 3.8+；最低可用 Xcode 版本未建立 |
 
-2026-10-04 已用 Swift 6.2 完成 Apple 芯片上的 Debug 编译及 14 项离线 XCTest；测试使用合成账户/会话和模拟子进程，未启动真实 App 或 Codex，也未访问真实账户。编译器未报告源码警告；受隔离环境限制，SwiftPM 提示用户缓存不可写。已另完成本机 arm64 Release 打包；SDK 调试模块路径映射产生 linker 提示，产物路径扫描及签名完整性通过，完整分发体验仍未验收。尚未建立真实 Codex 版本兼容矩阵。Intel 交叉编译即使通过，也不能替代 Intel 运行验证。
+2026-10-07：合并版本通过 18 项离线 XCTest（完整 Xcode 工具链），Universal 两种架构 Release 构建、路径扫描、签名完整性、DMG 校验及 ZIP 完整性通过。默认 Command Line Tools 缺少 XCTest，测试需使用完整 Xcode；构建出现 SDK 调试模块路径 linker 提示，未影响签名及产物检查。未启动真实 Codex 或访问真实账号。
+
+历史验证：2026-10-04 已用 Swift 6.2 完成 Apple 芯片上的 Debug 编译及 14 项离线 XCTest；测试使用合成账户/会话和模拟子进程，未启动真实 App 或 Codex，也未访问真实账户。编译器未报告源码警告；受隔离环境限制，SwiftPM 提示用户缓存不可写。已另完成本机 arm64 Release 打包；SDK 调试模块路径映射产生 linker 提示，产物路径扫描及签名完整性通过，完整分发体验仍未验收。尚未建立真实 Codex 版本兼容矩阵。Intel 交叉编译即使通过，也不能替代 Intel 运行验证。
 
 ## 日常使用
 
@@ -62,7 +77,7 @@ Developer ID 与 [Apple 公证](https://developer.apple.com/developer-id/) 是�
 
 ### 1. 准备工具和 Codex
 
-- 使用 macOS 14+；先确认你的 CPU 是 Apple 芯片还是 Intel。当前 arm64 安装包不能用于 Intel。
+- 使用 macOS 14+；先确认你的 CPU 是 Apple 芯片还是 Intel。0.4.1 Universal 包包含 Intel 架构，但 Intel 实机未验收。
 - 安装 Apple 的 Xcode，或提供兼容 Swift/macOS SDK 的 Command Line Tools。没有工具时可在终端执行 `xcode-select --install` 并按系统提示安装。只有 Command Line Tools 的机器尚未验收；实际验证使用 Xcode SDK 26.0、Swift 6.2。
 - 项目声明 Swift tools 5.10；需 Python 3.8+。没有外部 SwiftPM 依赖，也不需要安装第三方 Python 包。
 - 单独安装并登录兼容 Codex，参见 [OpenAI 官方 CLI 文档](https://learn.chatgpt.com/docs/codex/cli)。在 Codex 自己的界面完成登录，不把密码、账号配置或 Token 放进项目。
@@ -119,7 +134,7 @@ open "dist/Codex Aura.app"
 ./scripts/build_release_dmg.sh ./dist native plain
 ```
 
-在本机 arm64 构建时输出 `dist/Codex Aura 0.4.0 arm64.dmg`、`dist/Codex Aura 0.4.0 arm64.dmg.zip` 和 `dist/SHA256SUMS-0.4.0.txt`。ZIP 根目录仅包含对应 DMG。Intel 本机原生构建的文件名使用 `x86_64`；它尚未在本项目验证。
+在本机 arm64 构建时输出 `dist/Codex Aura 0.4.1 arm64.dmg`、`dist/Codex Aura 0.4.1 arm64.dmg.zip` 和 `dist/SHA256SUMS-0.4.1.txt`。ZIP 根目录仅包含对应 DMG。Intel 本机原生构建的文件名使用 `x86_64`；它尚未在本项目验证。
 
 有足够空间且需两种架构时：
 
@@ -127,14 +142,14 @@ open "dist/Codex Aura.app"
 ./scripts/build_release_dmg.sh ./dist universal plain
 ```
 
-双架构模式最低要求 4 GiB，输出文件名带 `Universal`；本版 Universal 包与 Intel 运行未验收。脚本分别编译、合并、扫描、临时签名和验证，并产生校验和。它不会启动 App、登录账户或提交公证。
+双架构模式最低要求 4 GiB，输出文件名带 `Universal`；本版 Universal 构建与合并已检查，Intel 运行未验收。脚本分别编译、合并、扫描、临时签名和验证，并产生校验和。它不会启动 App、登录账户或提交公证。
 
 省略参数时为 `./dist`、`universal`、`finder`；`finder` 布局用 AppleScript 控制 Finder，可能需要构建时自动化权限，可选择 `plain` 避免。同名 App/包会被替换，请只用专用输出目录。
 
 核对 ZIP 的哈希时可执行：
 
 ```bash
-shasum -a 256 "dist/Codex Aura 0.4.0 arm64.dmg.zip"
+shasum -a 256 "dist/Codex Aura 0.4.1 arm64.dmg.zip"
 ```
 
 源码使用默认 stdio 方式启动 `codex app-server`，请求公开文档中的只读方法，未开启 experimental API。接口可能随本机 Codex 版本不同而返回不可用；[官方 app-server 文档](https://learn.chatgpt.com/docs/app-server) 不等于每个安装版本都已测试。
@@ -175,7 +190,7 @@ UserDefaults 还保存开关、参考单价、图标位置及面板展示状态�
 ## 准确性与限制
 
 - 额度和每日统计分别降级；每日接口不支持时仍能显示成功读取的额度。服务端原始错误/标准错误不直接展示，界面只给出请求名称及错误码等脱敏摘要。
-- 窗口按时长标注，不代表应用支持账户所有不同计量桶。当前优先 `codex` 桶，显示其中最长窗口。
+- 窗口按时长标注，不代表应用支持账户所有不同计量桶。当前优先 `codex` 桶，默认显示最长窗口，可切换服务实际返回的其他窗口。
 - 日统计优先服务端返回的有效日桶（明确零保留为零）；缺失时使用同目录、同账号已观测历史；用户启用后才可用本地估算。无法获取账号标识时不加载/保存账号历史。
 - Token 统计并非完整账单；日志会有缺失、重复、格式变更、跨账号或读取限额。重复累计事件不重复计入；没有可用数据时显示“—”。
 - USD 为 `Token ÷ 1,000,000 × 选定单价`，不区分模型、输入/输出/缓存 Token，不代表订阅实付或官方现价。

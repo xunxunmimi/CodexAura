@@ -6,13 +6,20 @@
 
 ## Download and install
 
-**[Experimental prerelease download](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/Codex.Aura.0.4.0.arm64.dmg.zip).** The package is `Codex Aura 0.4.0 arm64.dmg.zip`: a ZIP containing one DMG installer, for Apple silicon. It uses ad-hoc signing and is not notarized. Minimum declared macOS is 14; isolated startup has only been checked on macOS 26. Intel and Universal packages have not been accepted.
+Updated **2026-10-07 (Asia/Shanghai)**. Latest: **0.4.1 experimental prerelease**.
 
-Download the [experimental Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.0-experimental) `.dmg.zip` and [SHA-256 file](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/SHA256SUMS-0.4.0.txt), verify the hash, unzip it, open the DMG, and drag the app to Applications. Install/sign in to compatible Codex separately. The app lives in the menu bar; log estimates, X radar and translation are off by default. Source archives from Code → Download ZIP need compilation. See the [detailed Chinese build/run tutorial](README.md#从源码构建).
+| Package | Updated | Architecture / system | Download |
+| --- | --- | --- | --- |
+| `Codex Aura 0.4.1 Universal.dmg.zip` | 2026-10-07 | arm64 + x86_64; macOS 14+; Intel / macOS 14 runtime untested | [Latest experimental build](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.1-experimental/Codex.Aura.0.4.1.Universal.dmg.zip) |
+| `Codex Aura 0.4.0 arm64.dmg.zip` | 2026-10-05 | Apple silicon; macOS 26 isolated startup checked | [Previous experimental build](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/Codex.Aura.0.4.0.arm64.dmg.zip) |
+
+0.4.1 retains the reviewed 0.4.0 privacy defaults and account-isolated history. It adds native menu-bar placement with fallback access, newer bundled Codex path discovery, low-quota alerts, reset-credit expiry details, quota-window switching and latest-post-only radar scoring. Builds are ad-hoc signed, not notarized; fresh-Mac installation and Intel execution remain untested.
+
+Download the [latest experimental Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.1-experimental) and [SHA-256 file](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.1-experimental/SHA256SUMS-0.4.1.txt). Unzip the ZIP to obtain the DMG, then drag the app to Applications. Privacy options remain off by default. Source ZIPs require compilation.
 
 Licensed under **PolyForm Noncommercial 1.0.0**: source-available for the purposes permitted by the license; commercial uses need separate permission. This is not an OSI open-source license. Read [LICENSE](LICENSE), [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
-> **Experimental prerelease 0.4.0.** Source and the experimental Release are published; publicly downloaded bytes match the local SHA-256 hashes. Source verification and downloadable-app acceptance are separate. New arm64 App/DMG/DMG-ZIP passed read-only mounting, content checks, signature integrity and isolated startup with a fake subprocess. Old 0.3.x packages are not this candidate. Fresh-Mac download/install, real-account and Intel execution remain untested.
+> **Experimental prerelease 0.4.1.** Universal release build, personal-path scan, signature integrity, DMG checksum and ZIP integrity checks passed. The merged source passed 18 offline XCTest cases using full Xcode. No real account was contacted. Fresh-Mac installation, real-account use, Intel runtime, macOS 14 and multi-screen UI remain untested.
 
 This independent project is not affiliated with, sponsored by, or endorsed by OpenAI, ChatGPT, Codex, X or Google. Names and trademarks belong to their respective owners.
 
@@ -21,7 +28,7 @@ This independent project is not affiliated with, sponsored by, or endorsed by Op
 - Menu bar energy ring, actual quota-window labels and reset countdown. Only a returned seven-day window is labeled weekly.
 - Today / yesterday tokens with a source label. Missing values are “—”, not zero.
 - Selectable reference USD estimate, not an actual bill or official price.
-- Safe placement beside the camera notch with ⌘-drag repositioning, and native menu bar placement elsewhere.
+- Native menu bar ordering with ⌘-drag repositioning; backup icon / draggable window when no usable native anchor exists.
 - “CC · Settings & About” author credit and privacy controls (current UI is mainly Chinese).
 - Existing experimental Tibo radar and translation remain available but are **off by default**. Radar shows a keyword score, not a reset probability.
 
@@ -29,18 +36,18 @@ This independent project is not affiliated with, sponsored by, or endorsed by Op
 
 macOS 14+, a separately installed compatible Codex executable signed in with ChatGPT and eligible account usage, and network access for Codex's services. API-key authentication alone is not a replacement for subscription quota access.
 
-The simple build targets the host architecture; the distribution script targets arm64 + x86_64 Universal 2. This candidate's universal package and Intel execution have not been verified. The scripts use ad-hoc signing, not Developer ID or notarization. Building needs Swift tools 5.10+, Xcode/macOS SDK and Python 3; minimum working Xcode and real Codex version bounds have not been established. On 2026-10-04, Swift 6.2 compiled the Debug app and passed 14 offline XCTest cases on Apple silicon with synthetic data and mock subprocesses. Neither the real app nor Codex was launched, and no real account was contacted. There were no source compiler warnings; SwiftPM warned that its user cache was not writable in the isolated environment. Native arm64 Release packaging has also completed. SDK debug-module path mapping emitted linker notices; bundle path scanning and signature integrity passed. Browser download/Gatekeeper acceptance remains untested.
+The simple build targets the host architecture; the distribution script targets arm64 + x86_64 Universal 2. Universal construction was checked; Intel execution remains untested. The scripts use ad-hoc signing, not Developer ID or notarization. Building needs Swift tools 5.10+, Xcode/macOS SDK and Python 3; minimum working Xcode and real Codex version bounds have not been established. On 2026-10-04, Swift 6.2 compiled the Debug app and passed 14 offline XCTest cases on Apple silicon with synthetic data and mock subprocesses. Neither the real app nor Codex was launched, and no real account was contacted. There were no source compiler warnings; SwiftPM warned that its user cache was not writable in the isolated environment. Native arm64 Release packaging has also completed. SDK debug-module path mapping emitted linker notices; bundle path scanning and signature integrity passed. Browser download/Gatekeeper acceptance remains untested.
 
 ## Install and use
 
-**[Experimental Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.0-experimental).** Its notes identify the source revision, architecture, signing status, SHA-256 checksums and limits. A source ZIP is not a runnable app.
+**[Experimental Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.1-experimental).** Its notes identify the source revision, architecture, signing status, SHA-256 checksums and limits. A source ZIP is not a runnable app.
 
 To try this experimental package:
 
 1. Install and sign in to compatible Codex. Codex Aura neither bundles Codex nor requests your credentials.
 2. Download its DMG/ZIP and check the supplied SHA-256.
 3. Move `Codex Aura.app` to Applications and open it.
-4. Click the menu bar ring. There is no normal Dock window.
+4. Click the menu bar ring. Normally no Dock window; a draggable fallback window is available when the menu-bar anchor is inaccessible.
 5. Expand daily statistics and inspect their source. Refresh syncs usage; the power button quits.
 6. Settings can enable local-log estimates, radar and public-post translation. All three start disabled; collapsing a card does not disable a feature.
 
@@ -71,7 +78,7 @@ The default distribution build is Universal 2 (minimum 4 GiB), with Finder styli
 open "dist/Codex Aura.app"
 ```
 
-For Universal 2 without Finder styling, use `./scripts/build_release_dmg.sh ./dist universal plain`. Output is a DMG and a ZIP containing that DMG, plus `SHA256SUMS-<version>.txt`; binaries belong in Releases, not source history. Native filenames identify the host architecture. Current validated local package is arm64 only. Thresholds are guards, not space guarantees.
+For Universal 2 without Finder styling, use `./scripts/build_release_dmg.sh ./dist universal plain`. Output is a DMG and a ZIP containing that DMG, plus `SHA256SUMS-<version>.txt`; binaries belong in Releases, not source history. Native filenames identify the host architecture. 0.4.1 offers Universal 2; Intel runtime remains untested. Thresholds are guards, not space guarantees.
 
 Building needs compatible Xcode or Command Line Tools/macOS SDK, Swift tools 5.10+ and Python 3.8+. Only Xcode SDK 26.0 / Swift 6.2 / Python 3.9.6 has been used here. Check `xcode-select -p`, `xcrun --show-sdk-version`, `swift --version`, `python3 --version` and `uname -m`. Complete Apple tool installation first; a Command Line Tools-only setup is untested. The repository root contains Package.swift. `swift build` alone does not produce a full app bundle. A custom `DEVELOPER_DIR` can select a toolchain for one command without global changes.
 
