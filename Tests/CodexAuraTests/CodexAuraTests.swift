@@ -5,6 +5,132 @@ import XCTest
 @testable import CodexAura
 
 final class CodexAuraTests: XCTestCase {
+    func testNativePlacementSeedsRightSideWithoutOverwritingDraggedPosition() throws {
+        let suite = "CodexAuraTests.placement." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(987, forKey: "NSStatusItem Preferred Position unrelated-app")
+        StatusItemPlacement.prepare(defaults: defaults)
+        XCTAssertEqual(defaults.integer(forKey: StatusItemPlacement.positionKey), 100)
+        XCTAssertTrue(defaults.bool(forKey: StatusItemPlacement.visibleKey))
+        defaults.set(240, forKey: StatusItemPlacement.positionKey)
+        StatusItemPlacement.prepare(defaults: defaults)
+        XCTAssertEqual(defaults.integer(forKey: StatusItemPlacement.positionKey), 240)
+        StatusItemPlacement.prepare(defaults: defaults, reset: true)
+        XCTAssertEqual(defaults.integer(forKey: StatusItemPlacement.positionKey), 100)
+        XCTAssertEqual(defaults.integer(forKey: "NSStatusItem Preferred Position unrelated-app"), 987)
+    }
+
+    func testStatusItemWaitsForLayoutThenReportsUnavailable() {
+        var recovery = StatusAnchorRecovery()
+        XCTAssertEqual(recovery.update(usable: false, now: 0), .wait)
+        XCTAssertEqual(recovery.update(usable: false, now: 0.65), .wait)
+        XCTAssertEqual(recovery.update(usable: false, now: 7), .wait)
+        XCTAssertEqual(recovery.update(usable: false, now: 8), .recreate)
+        XCTAssertEqual(recovery.update(usable: false, now: 10), .wait)
+        XCTAssertEqual(recovery.update(usable: false, now: 12), .unavailable)
+        XCTAssertEqual(recovery.update(usable: true, now: 13), .ready)
+        XCTAssertEqual(recovery.update(usable: false, now: 14), .wait)
+        XCTAssertEqual(recovery.update(usable: false, now: 22), .unavailable)
+    }
+
+    func testRepeatedVisibilityLossDoesNotRepeatedlyRecreateStatusItem() {
+        var recovery = StatusAnchorRecovery()
+        XCTAssertEqual(recovery.update(usable: false, now: 0), .wait)
+        XCTAssertEqual(recovery.update(usable: false, now: 8), .recreate)
+        XCTAssertEqual(recovery.update(usable: false, now: 12), .unavailable)
+        for cycle in 1...10 {
+            let now = Double(cycle * 100)
+            XCTAssertEqual(recovery.update(usable: true, now: now), .ready)
+            recovery.layoutChanged()
+            XCTAssertEqual(recovery.update(usable: false, now: now + 1), .wait)
+            XCTAssertEqual(recovery.update(usable: false, now: now + 20), .unavailable)
+        }
+    }
+
+    func testDisplayRelayoutDoesNotImmediatelyTriggerRecovery() {
+        var recovery = StatusAnchorRecovery()
+        XCTAssertEqual(recovery.update(usable: false, now: 0), .wait)
+        recovery.layoutChanged()
+        XCTAssertEqual(recovery.update(usable: false, now: 9), .wait)
+        XCTAssertEqual(recovery.update(usable: true, now: 10), .ready)
+        XCTAssertEqual(recovery.update(usable: false, now: 30), .wait)
+        XCTAssertEqual(recovery.update(usable: true, now: 31), .ready)
+    }
+
+    func testStaleQuotaOnlyRetainedForMatchingAccount() {
+        var previous = client().makeSnapshot(rateResult: rate(), usageResult: daily(100),
+            accountResult: account("account-a"))
+        previous.resetCreditAvailableCount = 3
+        var next = client().makeSnapshot(rateResult: nil, usageResult: daily(200),
+            accountResult: account("account-a"))
+        next.preserveQuotaIfUnavailable(from: previous)
+        XCTAssertEqual(next.remainingPercent, 75)
+        XCTAssertEqual(next.today.tokens, 200)
+        XCTAssertTrue(next.isQuotaStale)
+        XCTAssertEqual(next.quotaUpdatedAt, previous.quotaUpdatedAt)
+        XCTAssertNil(next.resetCreditAvailableCount)
+        for accountID in ["account-b", ""] {
+            var other = client().makeSnapshot(rateResult: nil, usageResult: nil,
+                accountResult: account(accountID))
+            other.preserveQuotaIfUnavailable(from: previous)
+            XCTAssertNil(other.usedPercent)
+            XCTAssertFalse(other.isQuotaStale)
+        }
+        var recovered = client().makeSnapshot(rateResult: rate(used: 40),
+            usageResult: nil, accountResult: account("account-a"))
+        recovered.preserveQuotaIfUnavailable(from: next)
+        XCTAssertEqual(recovered.remainingPercent, 60)
+        XCTAssertFalse(recovered.isQuotaStale)
+    }
+
+    func testSlowQuotaResponseBeyondOldFourSecondLimit() throws {
+        try withTemporaryDirectory { root in
+            let executable = try mock("""
+import json,sys,time
+for line in sys.stdin:
+    q=json.loads(line)
+    if 'id' not in q: continue
+    method=q['method']
+    if method=='account/rateLimits/read':
+        time.sleep(4.3)
+        result={'rateLimits':{'primary':{'usedPercent':30,'windowDurationMins':10080}}}
+    elif method=='account/read': result={'account':{'id':'fictional-slow-account'}}
+    else: result={}
+    print(json.dumps({'id':q['id'],'result':result}),flush=True)
+""", root: root)
+            let c = CodexAppServerClient(environment: [:], homeDirectory: root,
+                historyStore: TokenHistoryStore(defaults: nil), executable: executable)
+            XCTAssertEqual(try c.fetchSnapshot().remainingPercent, 70)
+        }
+    }
+
+    func testNotchedStatusAnchorIgnoresSafeAreaVerticalMismatch() {
+        let screen = CGRect(x: 0, y: 0, width: 1512, height: 982)
+        let safe = CGRect(x: 830, y: 960, width: 682, height: 22)
+        XCTAssertTrue(StatusAnchorGeometry.isUsable(
+            item: CGRect(x: 1000, y: 946, width: 24, height: 24),
+            screen: screen, menuBarHeight: 38, rightSafeArea: safe))
+        XCTAssertFalse(StatusAnchorGeometry.isUsable(
+            item: CGRect(x: 818, y: 950, width: 24, height: 24),
+            screen: screen, menuBarHeight: 38, rightSafeArea: safe))
+    }
+
+    func testStatusAnchorRejectsOffscreenAndContentArea() {
+        let screen = CGRect(x: -1920, y: 200, width: 1920, height: 1080)
+        for item in [
+            CGRect(x: -20, y: 1254, width: 24, height: 24),
+            CGRect(x: -1800, y: 500, width: 24, height: 24),
+            CGRect.zero
+        ] {
+            XCTAssertFalse(StatusAnchorGeometry.isUsable(
+                item: item, screen: screen, menuBarHeight: 24, rightSafeArea: nil))
+        }
+        XCTAssertTrue(StatusAnchorGeometry.isUsable(
+            item: CGRect(x: -300, y: 1254, width: 24, height: 24),
+            screen: screen, menuBarHeight: 24, rightSafeArea: nil))
+    }
+
     private func client(home: String = "/tmp/codexaura-fictional-home", history: TokenHistoryStore = TokenHistoryStore(defaults: nil)) -> CodexAppServerClient {
         CodexAppServerClient(environment: ["CODEX_HOME": home], homeDirectory: URL(fileURLWithPath: "/tmp/codexaura-unused-home"), historyStore: history)
     }
@@ -208,6 +334,35 @@ for line in sys.stdin:
 }
 
 extension CodexAuraTests {
+    @MainActor
+    func testTimeoutRetainsLastSnapshotAndRecoveryClearsStale() async throws {
+        let count = OSAllocatedUnfairLock(initialState: 0)
+        let store = UsageStore(defaults: nil, fetchUsage: { _ in
+            let attempt = count.withLock { value in value += 1; return value }
+            if attempt == 2 { throw UsageError.timeout }
+            var snapshot = UsageSnapshot.empty
+            snapshot.usedPercent = attempt == 1 ? 30 : 40
+            snapshot.accountKey = "synthetic-account"
+            snapshot.updatedAt = Date(timeIntervalSince1970: 100)
+            snapshot.resetCreditAvailableCount = 3
+            return snapshot
+        })
+        store.refresh()
+        try await waitForUsageToFinish(store)
+        store.refresh()
+        try await waitForUsageToFinish(store)
+        XCTAssertEqual(store.snapshot.remainingPercent, 70)
+        XCTAssertTrue(store.snapshot.isQuotaStale)
+        XCTAssertEqual(store.snapshot.updatedAt, Date(timeIntervalSince1970: 100))
+        XCTAssertNil(store.snapshot.resetCreditAvailableCount)
+        XCTAssertTrue(store.errorMessage?.contains("非实时") == true)
+        store.refresh()
+        try await waitForUsageToFinish(store)
+        XCTAssertEqual(store.snapshot.remainingPercent, 60)
+        XCTAssertFalse(store.snapshot.isQuotaStale)
+        XCTAssertNil(store.errorMessage)
+    }
+
     @MainActor
     private func waitForUsageToFinish(_ store: UsageStore) async throws {
         let deadline = ProcessInfo.processInfo.systemUptime + 3
