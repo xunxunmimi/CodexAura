@@ -25,18 +25,21 @@ struct CodexAppServerClient {
         let executable = try locateCodexExecutable()
         var childEnvironment = environment
         childEnvironment["CODEX_HOME"] = home.path // One chosen home for both RPC and optional logs.
-        let rpc = try StdioRPCClient(executable: executable, environment: childEnvironment)
+        let rpc = try StdioRPCClient(executable: executable, environment: childEnvironment, timeout: 45)
         defer { rpc.close() }
-        try rpc.send(id: 1, method: "initialize", params: ["clientInfo": ["name": "CodexAura", "version": "0.4.1"]])
-        _ = try rpc.response(id: 1, method: "initialize")
+        try rpc.send(id: 1, method: "initialize", params: ["clientInfo": ["name": "CodexAura", "version": "0.4.5"]])
+        _ = try rpc.response(id: 1, method: "initialize", timeout: 8)
         try rpc.send(method: "initialized")
         try rpc.send(id: 2, method: "account/rateLimits/read")
         try rpc.send(id: 3, method: "account/usage/read")
         try rpc.send(id: 4, method: "account/read", params: ["refreshToken": false])
         var warnings: [String] = []
         func result(id: Int, method: String) -> [String: Any]? {
-            do { return try rpc.response(id: id, method: method) }
-            catch { warnings.append(error.localizedDescription); return nil }
+            do { return try rpc.response(id: id, method: method, timeout: id == 2 ? 25 : 5) }
+            catch {
+                if !warnings.contains(error.localizedDescription) { warnings.append(error.localizedDescription) }
+                return nil
+            }
         }
         let rate = result(id: 2, method: "account/rateLimits/read")
         let usage = result(id: 3, method: "account/usage/read")
@@ -113,6 +116,8 @@ struct CodexAppServerClient {
         if used == nil { messages.append("额度数据不可用；没有将缺失值解释为剩余额度。") }
         if todayUsage.tokens == nil || yesterdayUsage.tokens == nil { messages.append("部分日统计不可用；本地日志补充默认关闭。") }
         var snapshot = UsageSnapshot(usedPercent: used, resetsAt: reset, windowDurationMins: duration, planName: plan?.uppercased(), today: todayUsage, yesterday: yesterdayUsage, updatedAt: now, warning: messages.isEmpty ? nil : messages.joined(separator: "\n"))
+        snapshot.accountKey = historyKey
+        snapshot.quotaUpdatedAt = used == nil ? nil : now
         snapshot.windows = windows.compactMap { value in
             guard let minutes = UsageNumbers.tokens(value["windowDurationMins"]),
                   minutes > 0, minutes <= 525_600 else { return nil }

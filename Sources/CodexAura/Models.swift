@@ -66,6 +66,24 @@ struct UsageSnapshot: Equatable {
     var updatedAt: Date
     var warning: String?
     var windows: [QuotaWindow] = []
+    var accountKey: String? = nil
+    var quotaUpdatedAt: Date? = nil
+    var isQuotaStale = false
+
+    /// Only merge quota from a verified matching account. Daily counters stay fresh.
+    mutating func preserveQuotaIfUnavailable(from previous: UsageSnapshot) {
+        guard usedPercent == nil, previous.usedPercent != nil,
+              let accountKey, accountKey == previous.accountKey else { return }
+        usedPercent = previous.usedPercent
+        resetsAt = previous.resetsAt
+        windowDurationMins = previous.windowDurationMins
+        windows = previous.windows
+        quotaUpdatedAt = previous.quotaUpdatedAt ?? previous.updatedAt
+        isQuotaStale = true
+        // Reset cards can expire or be consumed while offline: do not reuse them.
+        warning = ["额度更新失败，显示上次成功数据（非实时）。", warning]
+            .compactMap { $0 }.joined(separator: "\n")
+    }
     var resetCreditAvailableCount: Int? = nil
     var resetCredits: [RateLimitResetCredit] = []
     var weeklyRemainingPercent: Double? { windows.first { $0.durationMins == 10_080 }?.remainingPercent }

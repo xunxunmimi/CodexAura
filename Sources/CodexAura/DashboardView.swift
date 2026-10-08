@@ -267,6 +267,10 @@ struct DashboardView: View {
 
     private var statusText: String {
         if store.isRefreshing { return "正在同步本机 Codex 数据…" }
+        if store.snapshot.isQuotaStale {
+            let date = store.snapshot.quotaUpdatedAt ?? store.snapshot.updatedAt
+            return "额度未更新 · 上次 " + date.formatted(date: .omitted, time: .shortened)
+        }
         if store.snapshot.updatedAt == .distantPast { return "等待首次同步" }
         return "本地同步 · \(store.snapshot.updatedAt.formatted(date: .omitted, time: .shortened))"
     }
@@ -765,13 +769,19 @@ private struct FlowingEnergyArc: View {
 
     var body: some View {
         Canvas(rendersAsynchronously: true) { context, size in
+            drawEnergy(context: &context, size: size)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func drawEnergy(context: inout GraphicsContext, size: CGSize) {
             let safeProgress = min(max(progress, 0), 1)
             guard safeProgress > 0.001 else { return }
 
             let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
             // The canvas is 14pt larger than the ring view. This radius is therefore
             // identical to the SwiftUI Circle path radius instead of its inner edge.
-            let radius = min(size.width, size.height) * 0.5 - 7.0
+            let radius: Double = Double(min(size.width, size.height)) * 0.5 - 7.0
             let startAngle = -Double.pi * 0.5
             let endAngle = startAngle + Double.pi * 2 * safeProgress
             let arcLength = endAngle - startAngle
@@ -883,8 +893,6 @@ private struct FlowingEnergyArc: View {
                     style: StrokeStyle(lineWidth: 0.82, lineCap: .round, lineJoin: .round)
                 )
             }
-        }
-        .allowsHitTesting(false)
     }
 
     private func arc(

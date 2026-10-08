@@ -96,8 +96,21 @@ final class UsageStore: ObservableObject {
                 self.isRefreshing = false
                 guard self.settingsRevision == revision else { self.refresh(); return }
                 switch usage {
-                case .success(let snapshot): self.snapshot = snapshot; self.errorMessage = snapshot.warning
-                case .failure(let error): self.snapshot = .empty; self.errorMessage = error.localizedDescription
+                case .success(var snapshot):
+                    snapshot.preserveQuotaIfUnavailable(from: self.snapshot)
+                    self.snapshot = snapshot
+                    self.errorMessage = snapshot.warning
+                case .failure(let error):
+                    if case UsageError.timeout = error, self.snapshot.usedPercent != nil {
+                        self.snapshot.isQuotaStale = true
+                        self.snapshot.quotaUpdatedAt = self.snapshot.quotaUpdatedAt ?? self.snapshot.updatedAt
+                        self.snapshot.resetCredits = []
+                        self.snapshot.resetCreditAvailableCount = nil
+                        self.errorMessage = "同步超时，显示上次成功数据（非实时，当前账号未重新确认）。"
+                    } else {
+                        self.snapshot = .empty
+                        self.errorMessage = error.localizedDescription
+                    }
                 }
                 if fetchRadar { self.refreshRadar(translate: translate, revision: revision) }
             }

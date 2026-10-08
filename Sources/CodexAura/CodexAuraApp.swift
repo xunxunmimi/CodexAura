@@ -31,28 +31,27 @@ struct CodexAuraApp: App {
 }
 
 @MainActor
-private final class BackupStatusButton: NSButton {
-    var didDrag: (() -> Void)?
-
-    override func mouseDown(with event: NSEvent) {
-        if event.modifierFlags.contains(.command), let window {
-            window.performDrag(with: event)
-            didDrag?()
-        } else {
-            super.mouseDown(with: event)
-        }
-    }
-}
-
-@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    #if STATUS_ITEM_SMOKE_TEST
+    private let store = UsageStore(defaults: nil, fetchUsage: { _ in
+        var value = UsageSnapshot.empty
+        value.usedPercent = 28
+        value.windowDurationMins = 10_080
+        value.windows = [QuotaWindow(usedPercent: 28, resetsAt: nil, durationMins: 10_080)]
+        value.planName = "TEST"
+        value.updatedAt = Date()
+        return value
+    })
+    #else
     private let store = UsageStore()
+    #endif
     private let popover = NSPopover()
     private var statusItem: NSStatusItem?
     private var fallbackWindow: NSWindow?
     private var placementTimer: Timer?
-    private var backupStatusPanel: NSPanel?
-    private var backupStatusButton: BackupStatusButton?
+    private var anchorRecovery = StatusAnchorRecovery()
+    private var pendingPresentation: Task<Void, Never>?
+    private var pendingAllowsFallback = false
     private var lastPopoverRefreshAt = Date.distantPast
     private var cancellables = Set<AnyCancellable>()
     private let lowQuotaAlertKeyPrefix = "CodexAura.LowQuotaAlert.v1."
@@ -60,29 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
-        // Seed the saved ordering once. On notched displays macOS can otherwise
-        // assign a new item's default slot behind the camera. Subsequent
-        // Command-drags remain owned and persisted by the system.
-        let autosaveName = "CodexAuraStatusItemSystemV6"
-        let positionKey = "NSStatusItem Preferred Position " + autosaveName
-        if UserDefaults.standard.object(forKey: positionKey) == nil {
-            UserDefaults.standard.set(200, forKey: positionKey)
-        }
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.autosaveName = autosaveName
-        item.isVisible = true
-
-        guard let button = item.button else {
-            NSApp.terminate(nil)
-            return
-        }
-
-        button.image = statusImage(for: nil)
-        button.imagePosition = .imageOnly
-        button.toolTip = "Codex Aura · 点击查看用量"
-        button.target = self
-        button.action = #selector(togglePopover(_:))
-        button.sendAction(on: [.leftMouseUp])
+        installStatusItem()
 
         popover.behavior = .transient
         popover.animates = true
@@ -93,10 +70,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         hostingController.sizingOptions = [.preferredContentSize]
         popover.contentViewController = hostingController
 
-        statusItem = item
         placementTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.updateFallbackAccess() }
         }
+        NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.anchorRecovery.layoutChanged()
+                self?.updateFallbackAccess()
+            }
+            .store(in: &cancellables)
         store.$snapshot
             .receive(on: RunLoop.main)
             .sink { [weak self] snapshot in
@@ -110,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     let toolTip = lowQuota.map { "Codex Aura · ⚠ \($0)" }
                         ?? "Codex Aura · \(windowLabel) \(Int(remaining.rounded()))%"
                     self.statusItem?.button?.image = image
-                    self.statusItem?.button?.toolTip = toolTip
+                    self.statusItem?.button?.toolTip = snapshot.isQuotaStale ? toolTip + " · 上次数据，未更新" : toolTip
                     self.statusItem?.button?.contentTintColor = lowQuota == nil ? nil : .systemRed
                 } else {
                     let image = self.statusImage(for: nil)
@@ -120,8 +103,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     self.statusItem?.button?.contentTintColor = nil
                 }
                 self.presentLowQuotaIfNeeded(snapshot)
-                self.backupStatusButton?.image = self.statusItem?.button?.image
-                self.backupStatusButton?.contentTintColor = lowQuota == nil ? .white : .systemRed
             }
             .store(in: &cancellables)
 
@@ -136,6 +117,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         store.start()
         showWelcomePopoverIfNeeded()
+        #if STATUS_ITEM_SMOKE_TEST
+        for seconds in [2.0, 10.0, 20.0] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+                guard let self else { return }
+                print(self.menuBarDiagnostics())
+                fflush(stdout)
+            }
+        }
+        #endif
+    }
+
+    private func installStatusItem(recovering: Bool = false) {
+        let image = statusItem?.button?.image ?? statusImage(for: nil)
+        let tooltip = statusItem?.button?.toolTip ?? "Codex Aura · 点击查看用量"
+        let tint = statusItem?.button?.contentTintColor
+        popover.performClose(nil)
+        if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
+        let defaults = UserDefaults.standard
+        StatusItemPlacement.prepare(defaults: defaults, reset: recovering)
+        let item = NSStatusBar.system.statusItem(withLength: 24)
+        // Recover once into a fresh system-owned slot, without rewriting other
+        // apps' positions or continually fighting the user's Command-drag order.
+        item.autosaveName = StatusItemPlacement.autosaveName
+        statusItem = item
+        item.isVisible = true
+        guard let button = item.button else { return }
+        button.image = image
+        button.contentTintColor = tint
+        button.imagePosition = .imageOnly
+        button.toolTip = tooltip
+        button.target = self
+        button.action = #selector(togglePopover(_:))
+        button.sendAction(on: [.leftMouseUp])
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -146,7 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
-        showPopover()
+        requestPresentation(allowFallback: true)
         return false
     }
 
@@ -154,11 +168,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if popover.isShown {
             popover.performClose(sender)
         } else {
-            showPopover()
+            showPopover(clickedAnchor: sender as? NSStatusBarButton)
         }
     }
 
-    private func showPopover() {
+    private func showPopover(clickedAnchor: NSStatusBarButton? = nil) {
         let now = Date()
         if now.timeIntervalSince(lastPopoverRefreshAt) >= 2 {
             lastPopoverRefreshAt = now
@@ -166,17 +180,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         updateFallbackAccess()
-        let anchor = hasUsableStatusAnchor ? statusItem?.button : backupStatusButton
-        guard let button = anchor, button.window?.isVisible == true else {
-            popover.performClose(nil)
-            showFallbackWindow()
+        // A delivered native click is stronger evidence than screen geometry.
+        let anchor = clickedAnchor ?? (hasUsableStatusAnchor ? statusItem?.button : nil)
+        guard let button = anchor, button.window != nil else {
+            requestPresentation(allowFallback: false)
             return
         }
-        if fallbackWindow?.isVisible == true {
-            fallbackWindow?.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
+        pendingPresentation?.cancel()
+        pendingPresentation = nil
+        fallbackWindow?.orderOut(nil)
+        NSApp.setActivationPolicy(.accessory)
 
         // Recreate the dashboard for every opening so both optional sections
         // always begin in their intended collapsed state.
@@ -194,80 +207,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let button = statusItem?.button,
               let window = button.window,
               statusItem?.isVisible == true,
+              window.isVisible,
               !button.bounds.isEmpty else { return false }
         let frame = button.convert(button.bounds, to: nil)
         let screenFrame = window.convertToScreen(frame)
-        guard let screen = NSScreen.screens.first(where: { $0.frame.intersects(screenFrame) }),
-              screenFrame.minY >= screen.visibleFrame.maxY - 4,
-              screenFrame.maxX <= screen.frame.maxX,
-              screenFrame.minX >= screen.frame.minX else { return false }
-        if screen.safeAreaInsets.top > 0, let rightArea = screen.auxiliaryTopRightArea {
-            return rightArea.contains(NSPoint(x: screenFrame.midX, y: screenFrame.midY))
+        return NSScreen.screens.contains { screen in
+            StatusAnchorGeometry.isUsable(
+                item: screenFrame,
+                screen: screen.frame,
+                menuBarHeight: max(NSStatusBar.system.thickness, screen.safeAreaInsets.top),
+                rightSafeArea: screen.safeAreaInsets.top > 0 ? screen.auxiliaryTopRightArea : nil
+            )
         }
-        return true
     }
 
     private func updateFallbackAccess() {
-        statusItem?.isVisible = true
-        if hasUsableStatusAnchor {
-            backupStatusPanel?.orderOut(nil)
-        } else {
-            showBackupStatusButton()
-        }
-        // Keep a Dock entry whenever the system cannot provide a usable menu
-        // bar anchor. Reopening the app must always offer a reachable window.
-        let needsDock = (!hasUsableStatusAnchor && backupStatusPanel?.isVisible != true)
-            || fallbackWindow?.isVisible == true
+        let action = anchorRecovery.update(usable: hasUsableStatusAnchor,
+            now: ProcessInfo.processInfo.systemUptime)
+        if action == .recreate { installStatusItem(recovering: true) }
+        let needsDock = action == .offerDock || fallbackWindow?.isVisible == true
         let policy: NSApplication.ActivationPolicy = needsDock ? .regular : .accessory
         if NSApp.activationPolicy() != policy { NSApp.setActivationPolicy(policy) }
     }
 
-    private func showBackupStatusButton() {
-        guard let screen = NSScreen.main else { return }
-        let area = screen.auxiliaryTopRightArea ?? NSRect(
-            x: screen.frame.minX,
-            y: screen.visibleFrame.maxY,
-            width: screen.frame.width,
-            height: max(screen.frame.maxY - screen.visibleFrame.maxY, 24)
-        )
-        let size = min(max(area.height, 24), 32)
-        if backupStatusPanel == nil {
-            let panel = NSPanel(
-                contentRect: NSRect(x: 0, y: 0, width: size, height: size),
-                styleMask: [.borderless, .nonactivatingPanel],
-                backing: .buffered,
-                defer: false
-            )
-            panel.level = .popUpMenu
-            panel.backgroundColor = .clear
-            panel.isOpaque = false
-            panel.hasShadow = false
-            panel.hidesOnDeactivate = false
-            panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
-            panel.isMovable = true
-            let button = BackupStatusButton(frame: NSRect(x: 0, y: 0, width: size, height: size))
-            button.isBordered = false
-            button.imagePosition = .imageOnly
-            button.imageScaling = .scaleNone
-            button.target = self
-            button.action = #selector(togglePopover(_:))
-            button.toolTip = "Codex Aura · 点击查看用量 · ⌘拖动位置"
-            button.didDrag = { [weak self] in
-                guard let frame = self?.backupStatusPanel?.frame else { return }
-                UserDefaults.standard.set(Double(frame.minX - area.minX), forKey: "CodexAuraBackupStatusOffset.v1")
+    private func requestPresentation(allowFallback: Bool) {
+        pendingAllowsFallback = pendingAllowsFallback || allowFallback
+        guard pendingPresentation == nil else { return }
+        pendingPresentation = Task { @MainActor [weak self] in
+            // Wait through startup / display relayout and one native-item repair.
+            for _ in 0..<14 {
+                guard !Task.isCancelled, let self else { return }
+                self.updateFallbackAccess()
+                if self.hasUsableStatusAnchor {
+                    self.pendingPresentation = nil
+                    self.pendingAllowsFallback = false
+                    self.showPopover()
+                    return
+                }
+                do { try await Task.sleep(nanoseconds: 1_000_000_000) }
+                catch { return }
             }
-            panel.contentView = button
-            backupStatusPanel = panel
-            backupStatusButton = button
+            guard !Task.isCancelled, let self else { return }
+            self.pendingPresentation = nil
+            // Welcome / quota / post notifications never force a standalone window.
+            // Only explicitly reopening the app may request that recovery window.
+            let fallback = self.pendingAllowsFallback
+            self.pendingAllowsFallback = false
+            if fallback { self.showFallbackWindow() }
         }
-        guard let panel = backupStatusPanel else { return }
-        let saved = UserDefaults.standard.object(forKey: "CodexAuraBackupStatusOffset.v1") as? NSNumber
-        let offset = min(max(saved?.doubleValue ?? 8, 0), max(area.width - size, 0))
-        panel.setFrame(NSRect(x: area.minX + offset, y: area.midY - size / 2, width: size, height: size), display: true)
-        backupStatusButton?.frame = NSRect(x: 0, y: 0, width: size, height: size)
-        backupStatusButton?.image = statusItem?.button?.image
-        backupStatusButton?.contentTintColor = statusItem?.button?.contentTintColor ?? .white
-        panel.orderFrontRegardless()
     }
 
     private func showFallbackWindow() {
@@ -292,11 +279,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.level = .floating
         panel.delegate = self
         panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-        let controller = NSHostingController(
-            rootView: DashboardView(onPanelHeightChange: { [weak self] height in
-                self?.resizeFallbackWindow(to: height)
+        let controller = NSHostingController(rootView: VStack(spacing: 0) {
+            HStack {
+                Button("恢复菜单栏图标") { [weak self] in
+                    guard let self else { return }
+                    self.installStatusItem(recovering: true)
+                    self.anchorRecovery.layoutChanged()
+                    self.requestPresentation(allowFallback: false)
+                }
+                Button("复制图标诊断") { [weak self] in
+                    guard let self else { return }
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(self.menuBarDiagnostics(), forType: .string)
+                }
+            }.padding(8)
+            DashboardView(onPanelHeightChange: { [weak self] height in
+                self?.resizeFallbackWindow(to: height + 40)
             }).environmentObject(store)
-        )
+        })
         controller.sizingOptions = [.preferredContentSize]
         panel.contentViewController = controller
         fallbackWindow = panel
@@ -304,6 +304,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.setFrameAutosaveName("CodexAuraFallbackWindow.v1")
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func menuBarDiagnostics() -> String {
+        let frame = statusItem?.button.flatMap { button in
+            button.window.map { $0.convertToScreen(button.convert(button.bounds, to: nil)) }
+        }
+        return [
+            "Codex Aura " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "test"),
+            ProcessInfo.processInfo.operatingSystemVersionString,
+            "native item: \(statusItem != nil), visible: \(statusItem?.isVisible ?? false)",
+            "window visible: \(statusItem?.button?.window?.isVisible ?? false), frame: \(frame.map(NSStringFromRect) ?? "nil")",
+            "anchor usable: \(hasUsableStatusAnchor), policy: \(NSApp.activationPolicy().rawValue)",
+            "saved position: \(UserDefaults.standard.object(forKey: StatusItemPlacement.positionKey) ?? "none")",
+            "screens: " + NSScreen.screens.map {
+                "\(NSStringFromRect($0.frame)); safe top=\($0.safeAreaInsets.top); right=\($0.auxiliaryTopRightArea.map(NSStringFromRect) ?? "nil")"
+            }.joined(separator: " | ")
+        ].joined(separator: "\n")
     }
 
     private func resizeFallbackWindow(to height: CGFloat) {
@@ -320,7 +337,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        if hasUsableStatusAnchor || backupStatusPanel?.isVisible == true {
+        if hasUsableStatusAnchor {
             NSApp.setActivationPolicy(.accessory)
         }
     }
@@ -350,6 +367,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func lowQuotaDescription(for snapshot: UsageSnapshot) -> String? {
+        guard !snapshot.isQuotaStale else { return nil }
         if let remaining = snapshot.weeklyRemainingPercent, remaining <= 1 {
             return remaining <= 0 ? "每周额度已用尽" : "每周额度仅剩 \(Int(remaining.rounded()))%"
         }
@@ -360,6 +378,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func presentLowQuotaIfNeeded(_ snapshot: UsageSnapshot) {
+        guard !snapshot.isQuotaStale else { return }
         guard snapshot.updatedAt != .distantPast else { return }
         let windows: [(name: String, remaining: Double?, resetsAt: Date?)] = [
             ("weekly", snapshot.weeklyRemainingPercent, snapshot.weeklyResetsAt),
