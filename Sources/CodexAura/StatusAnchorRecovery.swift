@@ -2,7 +2,8 @@
 import Foundation
 
 struct StatusAnchorRecovery {
-    enum Action { case wait, ready, recreate, offerDock }
+    // Unavailability is diagnostic state, not a request to display a Dock icon.
+    enum Action { case wait, ready, recreate, unavailable }
     private var unavailableSince: TimeInterval?
     private var attemptedRepair = false
 
@@ -22,7 +23,7 @@ struct StatusAnchorRecovery {
             unavailableSince = now
             return .recreate
         }
-        if attemptedRepair, now - since >= 4 { return .offerDock }
+        if attemptedRepair, now - since >= 4 { return .unavailable }
         return .wait
     }
 }

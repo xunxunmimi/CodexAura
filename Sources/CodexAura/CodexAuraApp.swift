@@ -204,6 +204,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private var hasUsableStatusAnchor: Bool {
+        #if STATUS_ITEM_SMOKE_TEST
+        if ProcessInfo.processInfo.environment["CODEXAURA_SMOKE_FORCE_UNAVAILABLE"] == "1" {
+            return false
+        }
+        #endif
         guard let button = statusItem?.button,
               let window = button.window,
               statusItem?.isVisible == true,
@@ -225,9 +230,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let action = anchorRecovery.update(usable: hasUsableStatusAnchor,
             now: ProcessInfo.processInfo.systemUptime)
         if action == .recreate { installStatusItem(recovering: true) }
-        let needsDock = action == .offerDock || fallbackWindow?.isVisible == true
-        let policy: NSApplication.ActivationPolicy = needsDock ? .regular : .accessory
-        if NSApp.activationPolicy() != policy { NSApp.setActivationPolicy(policy) }
+        // Background geometry checks must never change Dock visibility. Fullscreen,
+        // auto-hidden menu bars and display relayout can temporarily hide the anchor.
+        // Only explicit fallback-window presentation/closure changes app policy.
     }
 
     private func requestPresentation(allowFallback: Bool) {
@@ -337,9 +342,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        if hasUsableStatusAnchor {
-            NSApp.setActivationPolicy(.accessory)
-        }
+        guard let window = notification.object as? NSWindow,
+              window === fallbackWindow else { return }
+        NSApp.setActivationPolicy(.accessory)
     }
 
     private func showWelcomePopoverIfNeeded() {
