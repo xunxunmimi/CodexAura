@@ -21,17 +21,31 @@ final class CodexAuraTests: XCTestCase {
         XCTAssertEqual(defaults.integer(forKey: "NSStatusItem Preferred Position unrelated-app"), 987)
     }
 
-    func testStatusItemWaitsForLayoutThenRepairsBeforeDockFallback() {
+    func testStatusItemWaitsForLayoutThenReportsUnavailable() {
         var recovery = StatusAnchorRecovery()
         XCTAssertEqual(recovery.update(usable: false, now: 0), .wait)
         XCTAssertEqual(recovery.update(usable: false, now: 0.65), .wait)
         XCTAssertEqual(recovery.update(usable: false, now: 7), .wait)
         XCTAssertEqual(recovery.update(usable: false, now: 8), .recreate)
         XCTAssertEqual(recovery.update(usable: false, now: 10), .wait)
-        XCTAssertEqual(recovery.update(usable: false, now: 12), .offerDock)
+        XCTAssertEqual(recovery.update(usable: false, now: 12), .unavailable)
         XCTAssertEqual(recovery.update(usable: true, now: 13), .ready)
         XCTAssertEqual(recovery.update(usable: false, now: 14), .wait)
-        XCTAssertEqual(recovery.update(usable: false, now: 22), .offerDock)
+        XCTAssertEqual(recovery.update(usable: false, now: 22), .unavailable)
+    }
+
+    func testRepeatedVisibilityLossDoesNotRepeatedlyRecreateStatusItem() {
+        var recovery = StatusAnchorRecovery()
+        XCTAssertEqual(recovery.update(usable: false, now: 0), .wait)
+        XCTAssertEqual(recovery.update(usable: false, now: 8), .recreate)
+        XCTAssertEqual(recovery.update(usable: false, now: 12), .unavailable)
+        for cycle in 1...10 {
+            let now = Double(cycle * 100)
+            XCTAssertEqual(recovery.update(usable: true, now: now), .ready)
+            recovery.layoutChanged()
+            XCTAssertEqual(recovery.update(usable: false, now: now + 1), .wait)
+            XCTAssertEqual(recovery.update(usable: false, now: now + 20), .unavailable)
+        }
     }
 
     func testDisplayRelayoutDoesNotImmediatelyTriggerRecovery() {
