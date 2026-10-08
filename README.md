@@ -6,18 +6,18 @@
 
 ## 下载与安装
 
-更新时间：**2026-10-08（北京时间）**。最新版本：**0.4.5 实验性预发布**。
+更新时间：**2026-10-08（北京时间）**。最新版本：**0.4.6 实验性预发布**。
 
 | 安装包 | 更新时间 | 架构 / 系统 | 下载状态 |
 | --- | --- | --- | --- |
-| `Codex Aura 0.4.5 Universal.dmg.zip` | 2026-10-08 | Apple 芯片 arm64 + Intel x86_64；macOS 14+；Intel / macOS 14 实机未验收 | [最新实验版下载](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.5-experimental/Codex.Aura.0.4.5.Universal.dmg.zip) |
+| `Codex Aura 0.4.6 Universal.dmg.zip` | 2026-10-08 | Apple 芯片 arm64 + Intel x86_64；macOS 14+；Intel / macOS 14 实机未验收 | [最新实验版下载](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.6-experimental/Codex.Aura.0.4.6.Universal.dmg.zip) |
 | `Codex Aura 0.4.1 Universal.dmg.zip` | 2026-10-07 | Apple 芯片 arm64 + Intel x86_64；macOS 14+；Intel / macOS 14 实机未验收 | [历史实验版下载](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.1-experimental/Codex.Aura.0.4.1.Universal.dmg.zip) |
 | `Codex Aura 0.4.0 arm64.dmg.zip` | 2026-10-05 | Apple 芯片 arm64；仅在 macOS 26 做过隔离启动验证 | [历史实验版下载](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/Codex.Aura.0.4.0.arm64.dmg.zip) |
 
-ZIP 解压后得到 `.dmg` 安装镜像。二进制仅放在 [实验性 Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.5-experimental)，请核对对应 [SHA-256 校验文件](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.5-experimental/SHA256SUMS-0.4.5.txt)。最新包包含两种架构；Intel 运行未验收。它采用 **ad-hoc 临时签名，未公证**，浏览器下载后的 Gatekeeper 体验尚未验收。
+ZIP 解压后得到 `.dmg` 安装镜像。二进制仅放在 [实验性 Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.6-experimental)，请核对对应 [SHA-256 校验文件](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.6-experimental/SHA256SUMS-0.4.6.txt)。最新包包含两种架构；Intel 运行未验收。它采用 **ad-hoc 临时签名，未公证**，浏览器下载后的 Gatekeeper 体验尚未验收。
 
 1. 单独安装兼容的 Codex，并在 Codex 中以 ChatGPT 账号登录。本工具不内置 Codex、不索取登录凭据。
-2. 下载 `.dmg.zip` 和对应 `SHA256SUMS-0.4.5.txt`，核对 SHA-256，再解压 ZIP。
+2. 下载 `.dmg.zip` 和对应 `SHA256SUMS-0.4.6.txt`，核对 SHA-256，再解压 ZIP。
 3. 双击解压得到的 `.dmg`，把 `Codex Aura.app` 拖到镜像中的 Applications。
 4. 从 Applications 启动；在系统菜单栏点击能量环。正常模式无 Dock 主窗口；菜单栏入口不可用时提供可拖动备用窗口。
 5. **macOS 26 看不到图标时**：打开“系统设置 → 菜单栏 → 允许在菜单栏显示”，开启 `Codex Aura`，再退出并重新打开 App。出现备用窗口不一定是空间不足；应用内“恢复菜单栏图标”不能代替系统开关。[Apple 官方说明](https://support.apple.com/zh-cn/guide/mac-help/mchlad96d366/26/mac/26)
@@ -29,19 +29,21 @@ ZIP 解压后得到 `.dmg` 安装镜像。二进制仅放在 [实验性 Release]
 
 本项目采用 **PolyForm Noncommercial 1.0.0**：源码公开，按许可证允许非商业用途；商业用途需另行授权。它不是 OSI 意义的标准开源项目。详见 [LICENSE](LICENSE)、[NOTICE](NOTICE) 与 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
-> **0.4.5 实验性预发布。** 基于远端 0.4.0 逐项合入本地修复，保留隐私开关、数据来源、账号隔离历史及脱敏错误。没有完成真实账号、Intel、macOS 14 实机、多屏或浏览器下载后的安装验收。旧 0.3.x 包不属于本版。
+> **0.4.6 实验性预发布。** 基于远端 0.4.0 逐项合入本地修复，保留隐私开关、数据来源、账号隔离历史及脱敏错误。没有完成真实账号、Intel、macOS 14 实机、多屏或浏览器下载后的安装验收。旧 0.3.x 包不属于本版。
 
 本工具独立开发，与 OpenAI、ChatGPT、Codex、X 和 Google 无官方隶属、赞助或背书关系。相关名称和商标属于各自权利人。
 
-## 0.4.5 更新记录（2026-10-08）
+## 0.4.6 更新记录（2026-10-08）
 
-- 移除不参与系统排列的悬浮备用图标；修正刘海区域判断，保留系统拖动排序，菜单栏不可用时提供 Dock / 可拖动窗口入口。
+- 修复 Dock 图标偶尔出现又消失：后台菜单栏检测不再切换 Dock 显示，仅手动打开备用窗口时显示，关闭备用窗口或返回菜单栏面板后隐藏。
+
+- 移除不参与系统排列的悬浮备用图标；修正刘海区域判断，保留系统拖动排序，菜单栏不可用时可手动重新打开 App 进入可拖动窗口。
 - 额度请求等待上限由 4 秒延长到 25 秒，连接总上限 45 秒，重复超时提示合并。
 - 同账号额度读取失败时保留本次运行的上次成功额度并标注未更新；首次失败仍显示未知，不同账号不复用。
 - 初始化超时保留旧数据时，明确提示当前账号未重新确认；旧额度不触发低额度提醒，重置卡不复用。
 - 等待系统菜单栏布局后再进行一次有上限的恢复；首次设置右侧位置提示，保留之后的 ⌘ 拖动排序。备用窗口新增“恢复菜单栏图标”和最小图标诊断。
 - 补充 macOS 26 的“允许在菜单栏显示”开关说明；用户反馈在 26.5.1 开启后图标恢复。这不是对所有系统 / 多屏组合的兼容性保证。
-- 26 项离线测试、Universal 构建、签名及安装包校验通过；Intel 与 macOS 14 实机仍未验收。
+- 27 项离线测试、Universal 构建、签名及安装包校验通过；Intel 与 macOS 14 实机仍未验收。
 
 ## 0.4.1 更新记录（2026-10-07）
 
@@ -56,7 +58,7 @@ ZIP 解压后得到 `.dmg` 安装镜像。二进制仅放在 [实验性 Release]
 - 菜单栏能量环、实际额度窗口标签与重置倒计时；只有服务返回 7 天窗口才称“每周额度”。
 - 今日、昨日 Token 统计，显示数据来源；缺失数据用“—”表示，不把未知当零。
 - 可切换参考单价的美元估算，它不是实际账单或官方报价。
-- 优先使用系统菜单栏图标，与其他图标一起排列，按住 ⌘ 拖动并记忆位置；不可见时提供 Dock 入口 / 可拖动窗口。
+- 优先使用系统菜单栏图标，与其他图标一起排列，按住 ⌘ 拖动并记忆位置；不可见时可手动重新打开 App 进入备用窗口；仅窗口打开期间显示 Dock 图标。
 - 同时返回多个窗口时可切换主显示；每周或 5 小时额度到 1% 及以下时，每个周期提醒一次。
 - 服务返回重置卡数量时显示按钮，点击查看到期明细。
 - “CC · 设置与关于”提供署名与隐私开关。
@@ -75,7 +77,7 @@ ZIP 解压后得到 `.dmg` 安装镜像。二进制仅放在 [实验性 Release]
 | 签名 | 构建脚本使用 ad-hoc 临时签名，没有 Developer ID 签名或公证步骤 |
 | 构建工具 | Swift tools 5.10+、Xcode 或兼容 Command Line Tools/macOS SDK、Python 3.8+；最低可用 Xcode 版本未建立 |
 
-2026-10-08：0.4.5 版本通过 26 项离线 XCTest（完整 Xcode 工具链），Universal 两种架构 Release 构建、路径扫描、签名完整性、DMG 校验及 ZIP 完整性通过。默认 Command Line Tools 缺少 XCTest，测试需使用完整 Xcode；构建出现 SDK 调试模块路径 linker 提示，未影响签名及产物检查。未启动真实 Codex 或访问真实账号。
+2026-10-08：0.4.6 版本通过 27 项离线 XCTest（完整 Xcode 工具链），Universal 两种架构 Release 构建、路径扫描、签名完整性、DMG 校验及 ZIP 完整性通过。默认 Command Line Tools 缺少 XCTest，测试需使用完整 Xcode；构建出现 SDK 调试模块路径 linker 提示，未影响签名及产物检查。未启动真实 Codex 或访问真实账号。
 
 历史验证：2026-10-04 已用 Swift 6.2 完成 Apple 芯片上的 Debug 编译及 14 项离线 XCTest；测试使用合成账户/会话和模拟子进程，未启动真实 App 或 Codex，也未访问真实账户。编译器未报告源码警告；受隔离环境限制，SwiftPM 提示用户缓存不可写。已另完成本机 arm64 Release 打包；SDK 调试模块路径映射产生 linker 提示，产物路径扫描及签名完整性通过，完整分发体验仍未验收。尚未建立真实 Codex 版本兼容矩阵。Intel 交叉编译即使通过，也不能替代 Intel 运行验证。
 
@@ -89,7 +91,7 @@ Developer ID 与 [Apple 公证](https://developer.apple.com/developer-id/) 是�
 
 ### 1. 准备工具和 Codex
 
-- 使用 macOS 14+；先确认你的 CPU 是 Apple 芯片还是 Intel。0.4.5 Universal 包包含 Intel 架构，但 Intel 实机未验收。
+- 使用 macOS 14+；先确认你的 CPU 是 Apple 芯片还是 Intel。0.4.6 Universal 包包含 Intel 架构，但 Intel 实机未验收。
 - 安装 Apple 的 Xcode，或提供兼容 Swift/macOS SDK 的 Command Line Tools。没有工具时可在终端执行 `xcode-select --install` 并按系统提示安装。只有 Command Line Tools 的机器尚未验收；实际验证使用 Xcode SDK 26.0、Swift 6.2。
 - 项目声明 Swift tools 5.10；需 Python 3.8+。没有外部 SwiftPM 依赖，也不需要安装第三方 Python 包。
 - 单独安装并登录兼容 Codex，参见 [OpenAI 官方 CLI 文档](https://learn.chatgpt.com/docs/codex/cli)。在 Codex 自己的界面完成登录，不把密码、账号配置或 Token 放进项目。
@@ -146,7 +148,7 @@ open "dist/Codex Aura.app"
 ./scripts/build_release_dmg.sh ./dist native plain
 ```
 
-在本机 arm64 构建时输出 `dist/Codex Aura 0.4.5 arm64.dmg`、`dist/Codex Aura 0.4.5 arm64.dmg.zip` 和 `dist/SHA256SUMS-0.4.5.txt`。ZIP 根目录仅包含对应 DMG。Intel 本机原生构建的文件名使用 `x86_64`；它尚未在本项目验证。
+在本机 arm64 构建时输出 `dist/Codex Aura 0.4.6 arm64.dmg`、`dist/Codex Aura 0.4.6 arm64.dmg.zip` 和 `dist/SHA256SUMS-0.4.6.txt`。ZIP 根目录仅包含对应 DMG。Intel 本机原生构建的文件名使用 `x86_64`；它尚未在本项目验证。
 
 有足够空间且需两种架构时：
 
@@ -161,7 +163,7 @@ open "dist/Codex Aura.app"
 核对 ZIP 的哈希时可执行：
 
 ```bash
-shasum -a 256 "dist/Codex Aura 0.4.5 arm64.dmg.zip"
+shasum -a 256 "dist/Codex Aura 0.4.6 arm64.dmg.zip"
 ```
 
 源码使用默认 stdio 方式启动 `codex app-server`，请求公开文档中的只读方法，未开启 experimental API。接口可能随本机 Codex 版本不同而返回不可用；[官方 app-server 文档](https://learn.chatgpt.com/docs/app-server) 不等于每个安装版本都已测试。
