@@ -6,29 +6,41 @@
 
 ## Download and install
 
-Updated **2026-10-07 (Asia/Shanghai)**. Latest: **0.4.1 experimental prerelease**.
+Updated **2026-10-08 (Asia/Shanghai)**. Latest: **0.4.5 experimental prerelease**.
 
 | Package | Updated | Architecture / system | Download |
 | --- | --- | --- | --- |
-| `Codex Aura 0.4.1 Universal.dmg.zip` | 2026-10-07 | arm64 + x86_64; macOS 14+; Intel / macOS 14 runtime untested | [Latest experimental build](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.1-experimental/Codex.Aura.0.4.1.Universal.dmg.zip) |
+| `Codex Aura 0.4.5 Universal.dmg.zip` | 2026-10-08 | arm64 + x86_64; macOS 14+; Intel / macOS 14 runtime untested | [Latest experimental build](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.5-experimental/Codex.Aura.0.4.5.Universal.dmg.zip) |
+| `Codex Aura 0.4.1 Universal.dmg.zip` | 2026-10-07 | arm64 + x86_64; macOS 14+; Intel / macOS 14 runtime untested | [Previous experimental build](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.1-experimental/Codex.Aura.0.4.1.Universal.dmg.zip) |
 | `Codex Aura 0.4.0 arm64.dmg.zip` | 2026-10-05 | Apple silicon; macOS 26 isolated startup checked | [Previous experimental build](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.0-experimental/Codex.Aura.0.4.0.arm64.dmg.zip) |
 
-0.4.1 retains the reviewed 0.4.0 privacy defaults and account-isolated history. It adds native menu-bar placement with fallback access, newer bundled Codex path discovery, low-quota alerts, reset-credit expiry details, quota-window switching and latest-post-only radar scoring. Builds are ad-hoc signed, not notarized; fresh-Mac installation and Intel execution remain untested.
+0.4.5 retains the reviewed 0.4.0 privacy defaults and account-isolated history. It adds native menu-bar placement with fallback access, newer bundled Codex path discovery, low-quota alerts, reset-credit expiry details, quota-window switching and latest-post-only radar scoring. Builds are ad-hoc signed, not notarized; fresh-Mac installation and Intel execution remain untested.
 
-Download the [latest experimental Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.1-experimental) and [SHA-256 file](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.1-experimental/SHA256SUMS-0.4.1.txt). Unzip the ZIP to obtain the DMG, then drag the app to Applications. Privacy options remain off by default. Source ZIPs require compilation.
+Download the [latest experimental Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.5-experimental) and [SHA-256 file](https://github.com/xunxunmimi/CodexAura/releases/download/v0.4.5-experimental/SHA256SUMS-0.4.5.txt). Unzip the ZIP to obtain the DMG, then drag the app to Applications. Privacy options remain off by default. Source ZIPs require compilation.
+
+**Missing icon on macOS 26?** Open System Settings → Menu Bar → Allow in the Menu Bar, enable `Codex Aura`, then quit and reopen the app. A fallback window does not necessarily mean the menu bar is full. The in-app restore button cannot override this system switch. [Apple instructions](https://support.apple.com/en-me/guide/mac-help/mchlad96d366/mac)
 
 Licensed under **PolyForm Noncommercial 1.0.0**: source-available for the purposes permitted by the license; commercial uses need separate permission. This is not an OSI open-source license. Read [LICENSE](LICENSE), [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
-> **Experimental prerelease 0.4.1.** Universal release build, personal-path scan, signature integrity, DMG checksum and ZIP integrity checks passed. The merged source passed 18 offline XCTest cases using full Xcode. No real account was contacted. Fresh-Mac installation, real-account use, Intel runtime, macOS 14 and multi-screen UI remain untested.
+> **Experimental prerelease 0.4.5.** Universal release build, personal-path scan, signature integrity, DMG checksum and ZIP integrity checks passed. The merged source passed 26 offline XCTest cases using full Xcode. No real account was contacted. Fresh-Mac installation, real-account use, Intel runtime, macOS 14 and multi-screen UI remain untested.
 
 This independent project is not affiliated with, sponsored by, or endorsed by OpenAI, ChatGPT, Codex, X or Google. Names and trademarks belong to their respective owners.
+
+## 0.4.5 changes (2026-10-08, Asia/Shanghai)
+
+- Remove the detached fallback icon; fix notch geometry detection and preserve native ordering. Offer Dock/window recovery when the native anchor is unavailable.
+- Wait for native menu-bar layout and attempt one bounded recovery. Seed an initial right-side position hint while preserving subsequent ⌘-drag ordering. Add restore and minimal icon-diagnostic buttons to the fallback window.
+- Document the macOS 26 menu-bar visibility switch. A user confirmed that enabling it restored the icon on 26.5.1; this is not a general multi-screen compatibility guarantee.
+- Allow 25 seconds for quota responses within a bounded 45-second connection; deduplicate errors.
+- Retain last successful in-memory quota on same-account partial failure with a stale label. Never reuse quota across verified different accounts. Initialization timeouts explicitly state the current account is unverified.
+- Do not trigger low-quota alerts or reuse reset credits from stale results. 26 offline regression tests passed.
 
 ## Features
 
 - Menu bar energy ring, actual quota-window labels and reset countdown. Only a returned seven-day window is labeled weekly.
 - Today / yesterday tokens with a source label. Missing values are “—”, not zero.
 - Selectable reference USD estimate, not an actual bill or official price.
-- Native menu bar ordering with ⌘-drag repositioning; backup icon / draggable window when no usable native anchor exists.
+- Native menu bar ordering with ⌘-drag repositioning; Dock entry / draggable window when no usable native anchor exists.
 - “CC · Settings & About” author credit and privacy controls (current UI is mainly Chinese).
 - Existing experimental Tibo radar and translation remain available but are **off by default**. Radar shows a keyword score, not a reset probability.
 
@@ -40,7 +52,7 @@ The simple build targets the host architecture; the distribution script targets 
 
 ## Install and use
 
-**[Experimental Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.1-experimental).** Its notes identify the source revision, architecture, signing status, SHA-256 checksums and limits. A source ZIP is not a runnable app.
+**[Experimental Release](https://github.com/xunxunmimi/CodexAura/releases/tag/v0.4.5-experimental).** Its notes identify the source revision, architecture, signing status, SHA-256 checksums and limits. A source ZIP is not a runnable app.
 
 To try this experimental package:
 
@@ -78,7 +90,7 @@ The default distribution build is Universal 2 (minimum 4 GiB), with Finder styli
 open "dist/Codex Aura.app"
 ```
 
-For Universal 2 without Finder styling, use `./scripts/build_release_dmg.sh ./dist universal plain`. Output is a DMG and a ZIP containing that DMG, plus `SHA256SUMS-<version>.txt`; binaries belong in Releases, not source history. Native filenames identify the host architecture. 0.4.1 offers Universal 2; Intel runtime remains untested. Thresholds are guards, not space guarantees.
+For Universal 2 without Finder styling, use `./scripts/build_release_dmg.sh ./dist universal plain`. Output is a DMG and a ZIP containing that DMG, plus `SHA256SUMS-<version>.txt`; binaries belong in Releases, not source history. Native filenames identify the host architecture. 0.4.5 offers Universal 2; Intel runtime remains untested. Thresholds are guards, not space guarantees.
 
 Building needs compatible Xcode or Command Line Tools/macOS SDK, Swift tools 5.10+ and Python 3.8+. Only Xcode SDK 26.0 / Swift 6.2 / Python 3.9.6 has been used here. Check `xcode-select -p`, `xcrun --show-sdk-version`, `swift --version`, `python3 --version` and `uname -m`. Complete Apple tool installation first; a Command Line Tools-only setup is untested. The repository root contains Package.swift. `swift build` alone does not produce a full app bundle. A custom `DEVELOPER_DIR` can select a toolchain for one command without global changes.
 
